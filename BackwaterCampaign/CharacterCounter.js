@@ -6,7 +6,7 @@ var CharacterCount = CharacterCount || (function(){
     // For the Backwater Living Campaign
     var
     version = '1.0',
-    lastUpdate = 1466112548,
+    lastUpdate = 1466118362,
     
     alignmentdictionary = {
         LG: ['LAWFUL GOOD','LAWFULGOOD','L G','LG'],
