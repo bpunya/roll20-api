@@ -156,6 +156,10 @@ var CharacterCount = CharacterCount || (function(){
     },
     
     handleCountType = function(mContent){
+        if(mContent.length<2){
+            showHelp()
+            return
+        }
         arg = mContent[1].toLowerCase()
         switch(arg){
             case 'all':
