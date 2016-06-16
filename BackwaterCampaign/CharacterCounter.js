@@ -5,7 +5,7 @@ var CharacterCount = CharacterCount || (function(){
     // Created to count character sheets
     // For the Backwater Living Campaign
     var
-    version = 1.0,
+    version = '1.0',
     lastupdate = 1466112548,
     
     alignmentdictionary = {
@@ -44,18 +44,18 @@ var CharacterCount = CharacterCount || (function(){
         };
         
     checkVersion = function(){
-        s = state.CharacterCount;
+        s = state.CharacterCount || false;
         if(s.version !== version){
             switch(version){
-                case 1.0:
-                    s={version:1.0}
-                    s.racedictionary=racedictionary}
-                    s.alignmentdictionary){s.alignmentdictionary=alignmentdictionary
+                case '1.0':
+                    s={version:'1.0'}
+                    s.racedictionary=racedictionary
+                    s.alignmentdictionary=alignmentdictionary
                 break;
             }
             s.version = version
         }
-        log('Character Count v'+s.version+' ['+(new Date(lastUpdate*1000))+']');)
+        log('-- Character Count v'+s.version+' -- ['+(new Date(lastUpdate*1000))+']');)
     },
     
     countCharacterAlignments = function(){
