@@ -1,5 +1,5 @@
+// Github: https://github.com/bpunya/roll20-api/blob/master/BackwaterCampaign/CharacterCounter.js
 // Author: PaprikaCC (Bodin Punyaprateep)
-// Github: 
 
 var CharacterCount = CharacterCount || (function(){
     // Created to count character sheets
