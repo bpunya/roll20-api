@@ -6,7 +6,7 @@ var CharacterCount = CharacterCount || (function(){
     // For the Backwater Living Campaign
     var
     version = '1.0',
-    lastupdate = 1466112548,
+    lastUpdate = 1466112548,
     
     alignmentdictionary = {
         LG: ['LAWFUL GOOD','LAWFULGOOD','L G','LG'],
@@ -55,7 +55,7 @@ var CharacterCount = CharacterCount || (function(){
             }
             s.version = version
         }
-        log('-- Character Count v'+s.version+' -- ['+(new Date(lastUpdate*1000))+']');)
+        log('-- Character Count v'+s.version+' -- ['+(new Date(lastUpdate*1000))+']');
     },
     
     countCharacterAlignments = function(){
@@ -67,19 +67,19 @@ var CharacterCount = CharacterCount || (function(){
             if(getAttrByName(character.id, 'is_npc') == 1){ return; }
             characterAlignment = getAttrByName(character.id, 'alignment')
             var isunknown = true;
-            _.each(init.alignmentdictionary, function(namelist, alignmentname){
+            _.each(alignmentdictionary, function(namelist, alignmentname){
                 if(_.find(namelist, function(alignment){
                         return characterAlignment.toUpperCase() == alignment
                     })){
-                    alignments[alignment] ++;
+                    alignments[alignmentname] ++;
                     isunknown = false;
                 }
             })
-            
             if(isunknown){
                 alignments['Unable to parse'].push(characterAlignment)
             }
         })
+        if(alignments['Unable to parse'].length < 1){ alignments['Unable to parse'] = 'None' }
         printOutput(alignments,'Character alignments');
     },
     
@@ -147,17 +147,25 @@ var CharacterCount = CharacterCount || (function(){
                     isunknown = false;
                 }
             })
-            
             if(isunknown){
-                alignments['Unable to parse'].push(characterRace)
+                races['Unable to parse'].push(characterRace)
             }
         })
+        if(races['Unable to parse'].length < 1){ races['Unable to parse'] = 'None' }
         printOutput(races,'Counted Player Races');
     },
     
     handleCountType = function(mContent){
-        switch(mContent[2]){
+        arg = mContent[1].toLowerCase()
+        switch(arg){
             case 'all':
+                countCharacterClasses();
+                countCharacterLevels();
+                countCharacterAlignments();
+                countCharacterRaces();
+            break;
+            
+            case 'everything':
                 countCharacterClasses();
                 countCharacterLevels();
                 countCharacterAlignments();
@@ -205,15 +213,14 @@ var CharacterCount = CharacterCount || (function(){
     handleChatInput = function(msg){
         if(msg.type !== 'api' || !playerIsGM(msg.playerid)){ return; }
         mContent = msg.content.split(/\s/);
-        if(mContent[0].toUpperCase() == '!CC'){
-            switch(mContent[1]){
-                case "count":
-                    handleCountType(mContent)
-                break;
-                default:
-                    showHelp()
-                break;
-            }
+        switch(mContent[0]){
+            case "!CC":
+                handleCountType(mContent)
+            break;
+            
+            case "!cc":
+                handleCountType(mContent)
+            break;
         }
     },
     
@@ -225,10 +232,23 @@ var CharacterCount = CharacterCount || (function(){
     },
     
     showHelp = function(){
-        sendChat("Character Count",
+        sendChat("CC",
             '/w gm '
-            +'Help'
-            +'Message'
+            +'<br>'
+            +'<div style="background-color:#ffffff; padding:5px; border-style:solid; border-width:2px;">'
+            +'<h3 style="border-style:dotted; border-width:2px; padding:5px">Character Count Help</h3>'
+            +'<p style="padding:5px">'
+            +'To access Character Count, use the following chat message format:<br>'
+            +'<h4>!CC &lt;command&gt;</h4>'
+            +'<br>'
+            +'<h4>Commands Available:</h4>'
+            +'<em>Not case-sensitive. Script ignores all sheets listed as NPC.</em><br><br>'
+            +'<strong>Alignment(s)</strong> ----<br> Counts all listed alignments. Alignments unable to be parsed are listed in a seperate line.<br>'
+            +'<strong>Class(es)</strong> ---- <br>Counts the combined total of all class levels.<br>'
+            +'<strong>Level(s)</strong> ---- <br>Counts the amount of players at each level.<br>'
+            +'<strong>Race(s)</strong> ---- <br>Counts all listed player races. Races unable to be parsed are listed in a seperate line.<br>'
+            +'<strong>All or Everything</strong> ---- <br>Does all of the above.<br>'
+            +'</p></div>'
         );
     }
     
@@ -237,16 +257,17 @@ var CharacterCount = CharacterCount || (function(){
         var rawOutput = [ // Header formatting
             '/w gm '
             +'<br>'
+            +'<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">'
         ]
-        rawOutput.push('<h3>'+outputtype+'.</h3>'); // Label the output type.
+        rawOutput.push('<div style="border-width:2px; border-style:dotted;"><h3 style="padding:5px;">'+outputtype+'.</h3></div><br>'); // Label the output type.
         _.each(totals, function(linevalue, linekey){
             if(typeof linevalue === 'object'){
-                rawOutput.push(linekey+': '+linevalue.join(", ")+' <br>');
+                rawOutput.push('<p style="font-family:sans-serif;"><strong>'+linekey+':</strong> '+linevalue.join(", ")+'</p>');
             } else {
-                rawOutput.push(linekey+': '+linevalue+' <br>');
+                rawOutput.push('<p style="font-family:sans-serif;"><strong>'+linekey+':</strong> '+linevalue+'</p>');
             }
         })
-        rawOutput.push(''); //ending formatting goes here
+        rawOutput.push('<em>Generated on '+new Date(Date.now())+'</em></div>'); //ending formatting goes here
         formattedOutput = rawOutput.join(' ');
         sendChat("CC", formattedOutput);
     }
