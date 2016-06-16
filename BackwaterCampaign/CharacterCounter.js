@@ -69,7 +69,7 @@ var CharacterCount = CharacterCount || (function(){
             var isunknown = true;
             _.each(alignmentdictionary, function(namelist, alignmentname){
                 if(_.find(namelist, function(alignment){
-                        return characterAlignment.toUpperCase() == alignment
+                    return characterAlignment.toUpperCase() == alignment
                     })){
                     alignments[alignmentname] ++;
                     isunknown = false;
@@ -141,7 +141,7 @@ var CharacterCount = CharacterCount || (function(){
             var isunknown = true;
             _.each(racedictionary, function(namelist, racename){
                 if(_.find(namelist, function(race){
-                        return characterRace.toLowerCase() == race
+                    return characterRace.toLowerCase() == race
                     })){
                     races[racename] ++;
                     isunknown = false;
@@ -262,17 +262,16 @@ var CharacterCount = CharacterCount || (function(){
             '/w gm '
             +'<br>'
             +'<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">'
-        ]
-        rawOutput.push('<div style="border-width:2px; border-style:dotted;"><h3 style="padding:5px;">'+outputtype+'.</h3></div><br>'); // Label the output type.
-        _.each(totals, function(linevalue, linekey){
-            if(typeof linevalue === 'object'){
+            +'<div style="border-width:2px; border-style:dotted;"><h3 style="padding:5px;">'+outputtype+'.</h3></div><br>'];
+        _.each(totals, function(linevalue, linekey){ // For each output, add a line to the chat output
+            if(typeof linevalue === 'object'){ // Treat arrays differently
                 rawOutput.push('<p style="font-family:sans-serif;"><strong>'+linekey+':</strong> '+linevalue.join(", ")+'</p>');
             } else {
                 rawOutput.push('<p style="font-family:sans-serif;"><strong>'+linekey+':</strong> '+linevalue+'</p>');
             }
         })
         rawOutput.push('<em>Generated on '+new Date(Date.now())+'</em></div>'); //ending formatting goes here
-        formattedOutput = rawOutput.join(' ');
+        formattedOutput = rawOutput.join('');
         sendChat("CC", formattedOutput);
     }
     
