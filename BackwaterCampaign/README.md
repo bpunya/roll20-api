@@ -4,4 +4,4 @@ Made for the Backwater Living Campaign.
 This script allows GMs to quickly count player statistics for planning purposes.
 You can check for: Total Level distribution, Class level distribution, Alignment distribution, Racial distribution.
 
-Commands: [All] [Everything] [Alignment] [Class] [Level] [Race]
+Commands: !cc or !CC + [All] [Everything] [Alignment] [Class] [Level] [Race]
