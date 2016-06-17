@@ -5,8 +5,8 @@ var CharacterCount = CharacterCount || (function(){
     // Created to count character sheets
     // For the Backwater Living Campaign
     var
-    version = '1.0',
-    lastUpdate = 1466118362,
+    currentversion = '1.1',
+    lastUpdate = 1466184053,
     
     alignmentdictionary = {
         LG: ['LAWFUL GOOD','LAWFULGOOD','L G','LG'],
@@ -21,39 +21,46 @@ var CharacterCount = CharacterCount || (function(){
         },
     
     racedictionary = {
-        Aarakocra: ['aarakocra','aarakokra','aaracokra','aarakrocra','aarakoca'],
-        Aasimar: ['aasimar'],
-        Dragonborn: ['dragonborn'], // NEED TO EXTEND THIS FURTHER
-        HillDwarf: ['hill dwarf', 'hilldwarf','dwarf hill','dwarf, hill','dwarf (hill)','(hill) dwarf'],
-        MountainDwarf: ['mountain dwarf','mountaindwarf','dwarf mountain','dwarf, mountain','dwarf (mountain)','(mountain) dwarf'],
-        DarkElf: ['dark elf','darkelf','elf dark','elf, dark','elf (dark)','(dark) elf','drow'],
-        HighElf: ['high elf','highelf','elf high','elf, high','elf (high)','(high) elf'],
-        WoodElf: ['wood elf','woodelf','elf wood','elf, wood','elf (wood)','(wood) elf'],
-        Genasi: ['genasi'], // NEED TO EXTEND THIS FURTHER
-        DeepGnome: ['deep gnome','deepgnome','gnome deep','gnome, deep','gnome (deep)','(deep) gnome','svirbneblin'],
-        ForestGnome: ['forest gnome','forestgnome','gnome forest','gnome, forest','gnome (forest)','(forest) gnome'],
-        RockGnome: ['rock gnome','rockgnome','gnome rock','gnome, rock','gnome (rock)','(rock) gnome'],
-        Goliath: ['goliath'],
-        LightfootHalfling: ['lightfoot halfling','lightfoothalfling','halfling lightfoot','halfling, lightfoot','halfling (lightfoot)','(lightfoot) halfling'],
-        StoutHalfling: ['stout halfling','stouthalfling','halfling stout','halfling, stout','halfling (stout)','(stout) halfling'],
-        Halfelf: ['half elf','halfelf','half-elf'],
-        Halforc: ['half orc','halforc','half-orc'],
-        Human: ['human'],
-        VariantHuman: ['variant human','human, variant','human (variant)'],
-        Tiefling: ['tiefling','teifling']
+        'Aarakocra': ['aarakocra','aarakokra','aaracokra','aarakrocra','aarakoca'],
+        'Aasimar': ['aasimar'],
+        'Dragonborn': ['dragonborn'], // NEED TO EXTEND THIS FURTHER
+        'Hill Dwarf': ['hill dwarf', 'hilldwarf','dwarf hill','dwarf, hill','dwarf (hill)','(hill) dwarf'],
+        'Mountain Dwarf': ['mountain dwarf','mountaindwarf','dwarf mountain','dwarf, mountain','dwarf (mountain)','(mountain) dwarf'],
+        'Dark Elf': ['dark elf','darkelf','elf dark','elf, dark','elf (dark)','(dark) elf','drow'],
+        'High Elf': ['high elf','highelf','elf high','elf, high','elf (high)','(high) elf'],
+        'Wood Elf': ['wood elf','woodelf','elf wood','elf, wood','elf (wood)','(wood) elf'],
+        'Genasi': ['genasi'], // NEED TO EXTEND THIS FURTHER
+        'Deep Gnome': ['deep gnome','deepgnome','gnome deep','gnome, deep','gnome (deep)','(deep) gnome','svirbneblin'],
+        'Forest Gnome': ['forest gnome','forestgnome','gnome forest','gnome, forest','gnome (forest)','(forest) gnome'],
+        'Rock Gnome': ['rock gnome','rockgnome','gnome rock','gnome, rock','gnome (rock)','(rock) gnome'],
+        'Goliath': ['goliath'],
+        'Lightfoot Halfling': ['lightfoot halfling','lightfoothalfling','halfling lightfoot','halfling, lightfoot','halfling (lightfoot)','(lightfoot) halfling'],
+        'Stout Halfling': ['stout halfling','stouthalfling','halfling stout','halfling, stout','halfling (stout)','(stout) halfling'],
+        'Half-elf': ['half elf','halfelf','half-elf'],
+        'Half-orc': ['half orc','halforc','half-orc'],
+        'Human': ['human'],
+        'Variant Human': ['variant human','human, variant','human (variant)'],
+        'Tiefling': ['tiefling','teifling']
         };
     
     checkVersion = function(){
         s = state.CharacterCount || false;
-        if(s.version !== version){
-            switch(version){
+        if(s.version !== currentversion){
+            switch(currentversion){
                 case '1.0':
                     s={version:'1.0'}
                     s.racedictionary=racedictionary
                     s.alignmentdictionary=alignmentdictionary
                 break;
+                case '1.1':
+                    log('Updating CC Dictionaries...')
+                    s={'version':'1.1'}
+                    s.racedictionary=racedictionary
+                    s.alignmentdictionary=alignmentdictionary
+                    log('Update Complete.')
+                break;
             }
-            s.version = version
+            s.version = currentversion
         }
         log('-- Character Count v'+s.version+' -- ['+(new Date(lastUpdate*1000))+']');
     },
@@ -63,10 +70,6 @@ var CharacterCount = CharacterCount || (function(){
             'LG':0,'NG':0,'CG':0,'LN':0,'N':0,'CN':0,'LE':0,'NE':0,'CE':0,'Unable to parse':[]
             };
         _.each(characterlist, function(character){
-            npctest = character.get('name').split(' ')[0]
-            if(getAttrByName(character.id, 'is_npc') == 1
-                || npctest == '(NPC)' || npctest == '(RCNPC)')
-                { return; }
             characterAlignment = getAttrByName(character.id, 'alignment')
             var isunknown = true;
             _.each(alignmentdictionary, function(namelist, alignmentname){
@@ -87,17 +90,13 @@ var CharacterCount = CharacterCount || (function(){
     
     countCharacterClasses = function(characterlist){
         var classes = {
-            'barbarian':0,'bard':0,'druid':0,'cleric':0,'fighter':0,'monk':0,'paladin':0,'ranger':0,'rogue':0,'sorcerer':0,'warlock':0,'wizard':0
+            'barbarian':0,'bard':0,'cleric':0,'druid':0,'fighter':0,'monk':0,'paladin':0,'ranger':0,'rogue':0,'sorcerer':0,'warlock':0,'wizard':0
             };
-        _.each(characterlist, function(character){
-            npctest = character.get('name').split(' ')[0]
-            if(getAttrByName(character.id, 'is_npc') == 1
-                || npctest == '(NPC)' || npctest == '(RCNPC)')
-                { return; }
-            _.each(classes, function(value, classname){
-                classes[classname] += getAttrByName(character.id, classname+'_level')
-            })
-        })
+        for(character in characterlist){
+            for(classname in classes){
+                classes[classname] += getAttrByName(characterlist[character].id, classname+'_level')
+            }
+        }
         printOutput(classes,'Combined Class levels');
     },
     
@@ -105,14 +104,10 @@ var CharacterCount = CharacterCount || (function(){
         var levels = {
             '1':0,'2':0,'3':0,'4':0,'5':0,'6':0,'7':0,'8':0,'9':0,'10':0,'11':0,'12':0,'13':0,'14':0,'15':0,'16':0,'17':0,'18':0,'19':0,'20':0
             };
-        _.each(characterlist, function(character){
-            npctest = character.get('name').split(' ')[0]
-            if(getAttrByName(character.id, 'is_npc') == 1
-                || npctest == '(NPC)' || npctest == '(RCNPC)')
-                { return; }
-            characterlevel = getAttrByName(character.id, 'level');
+        for(character in characterlist){
+            characterlevel = getAttrByName(characterlist[character].id, 'level');
             levels[characterlevel] ++;
-        })
+        }
         printOutput(levels,'Character levels');
     },
     
@@ -121,44 +116,42 @@ var CharacterCount = CharacterCount || (function(){
             'Aarakocra':0,
             'Aasimar':0,
             'Dragonborn':0,
-            'HillDwarf':0,
+            'Hill Dwarf':0,
             'Mountain Dwarf':0,
-            'DarkElf':0,
-            'HighElf':0,
-            'WoodElf':0,
+            'Dark Elf':0,
+            'High Elf':0,
+            'Wood Elf':0,
             'Genasi':0,
-            'DeepGnome':0,
-            'ForestGnome':0,
-            'RockGnome':0,
+            'Deep Gnome':0,
+            'Forest Gnome':0,
+            'Rock Gnome':0,
             'Goliath':0,
-            'LightfootHalfling':0,
-            'StoutHalfling':0,
-            'Halfelf':0,
-            'Halforc':0,
+            'Lightfoot Halfling':0,
+            'Stout Halfling':0,
+            'Half-elf':0,
+            'Half-orc':0,
             'Human':0,
-            'VariantHuman':0,
+            'Variant Human':0,
             'Tiefling':0,
             'Unable to parse':[]
             };
-        _.each(characterlist, function(character){
-            npctest = character.get('name').split(' ')[0]
-            if(getAttrByName(character.id, 'is_npc') == 1
-                || npctest == '(NPC)' || npctest == '(RCNPC)')
-                { return; }
-            characterRace = getAttrByName(character.id, 'race');
+        for(character in characterlist){
+            characterRace = getAttrByName(characterlist[character].id, 'race').toLowerCase()
             var isunknown = true;
-            _.each(racedictionary, function(namelist, racename){
-                if(_.find(namelist, function(race){
-                    return characterRace.toLowerCase() == race
-                    })){
-                    races[racename] ++;
-                    isunknown = false;
+            for(racename in racedictionary){
+                if(!isunknown){ break; }
+                for(word in racedictionary[racename]){
+                    if(!isunknown){ break; }
+                    if(characterRace == racedictionary[racename][word]){
+                        races[racename] ++;
+                        isunknown = false;
+                    }
                 }
-            })
+            }
             if(isunknown){
                 races['Unable to parse'].push(characterRace)
             }
-        })
+        }
         if(races['Unable to parse'].length < 1){ races['Unable to parse'] = 'None' }
         printOutput(races,'Counted Player Races');
     },
@@ -238,9 +231,15 @@ var CharacterCount = CharacterCount || (function(){
     },
     
     getCharacters = function(){
-        return findObjs({
-            _type: 'character',
-            archived: false
+        return filterObjs(function(obj) {
+            if(obj.get('_type') != 'character' 
+                || obj.get('archived') == true)
+                { return false; }
+            else if(getAttrByName(obj.id, 'is_npc') == 1
+                || obj.get('name').split(' ')[0] == '(NPC)' 
+                || obj.get('name').split(' ')[0] == '(RCNPC)')
+                { return false; }
+            else { return true; }
         })
     },
     
