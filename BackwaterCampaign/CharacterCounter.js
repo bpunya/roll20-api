@@ -19,7 +19,7 @@ var CharacterCount = CharacterCount || (function(){
         NE: ['NEUTRAL EVIL','NEUTRALEVIL','N E','NE'],
         CE: ['CHAOTIC EVIL','CHAOTICEVIL','C E','CE']
         },
-        
+    
     racedictionary = {
         Aarakocra: ['aarakocra','aarakokra','aaracokra','aarakrocra','aarakoca'],
         Aasimar: ['aasimar'],
@@ -42,7 +42,7 @@ var CharacterCount = CharacterCount || (function(){
         VariantHuman: ['variant human','human, variant','human (variant)'],
         Tiefling: ['tiefling','teifling']
         };
-        
+    
     checkVersion = function(){
         s = state.CharacterCount || false;
         if(s.version !== version){
@@ -58,12 +58,11 @@ var CharacterCount = CharacterCount || (function(){
         log('-- Character Count v'+s.version+' -- ['+(new Date(lastUpdate*1000))+']');
     },
     
-    countCharacterAlignments = function(){
+    countCharacterAlignments = function(characterlist){
         var alignments = {
             'LG':0,'NG':0,'CG':0,'LN':0,'N':0,'CN':0,'LE':0,'NE':0,'CE':0,'Unable to parse':[]
-            },
-        allcharacters = getCharacters();
-        _.each(allcharacters, function(character){
+            };
+        _.each(characterlist, function(character){
             if(getAttrByName(character.id, 'is_npc') == 1){ return; }
             characterAlignment = getAttrByName(character.id, 'alignment')
             var isunknown = true;
@@ -83,12 +82,11 @@ var CharacterCount = CharacterCount || (function(){
         printOutput(alignments,'Character alignments');
     },
     
-    countCharacterClasses = function(){
+    countCharacterClasses = function(characterlist){
         var classes = {
             'barbarian':0,'bard':0,'druid':0,'cleric':0,'fighter':0,'monk':0,'paladin':0,'ranger':0,'rogue':0,'sorcerer':0,'warlock':0,'wizard':0
-            },
-        allcharacters = getCharacters();
-        _.each(allcharacters, function(character){
+            };
+        _.each(characterlist, function(character){
             if(getAttrByName(character.id, 'is_npc') == 1){ return; }
             _.each(classes, function(value, classname){
                 classes[classname] += getAttrByName(character.id, classname+'_level')
@@ -97,12 +95,11 @@ var CharacterCount = CharacterCount || (function(){
         printOutput(classes,'Combined Class levels');
     },
     
-    countCharacterLevels  = function(){
+    countCharacterLevels  = function(characterlist){
         var levels = {
             '1':0,'2':0,'3':0,'4':0,'5':0,'6':0,'7':0,'8':0,'9':0,'10':0,'11':0,'12':0,'13':0,'14':0,'15':0,'16':0,'17':0,'18':0,'19':0,'20':0
-            },
-        allcharacters = getCharacters();
-        _.each(allcharacters, function(character){
+            };
+        _.each(characterlist, function(character){
             if(getAttrByName(character.id, 'is_npc') == 1){ return; }
             characterlevel = getAttrByName(character.id, 'level');
             levels[characterlevel] ++;
@@ -110,7 +107,7 @@ var CharacterCount = CharacterCount || (function(){
         printOutput(levels,'Character levels');
     },
     
-    countCharacterRaces = function(){
+    countCharacterRaces = function(characterlist){
         var races = {
             'Aarakocra':0,
             'Aasimar':0,
@@ -133,9 +130,8 @@ var CharacterCount = CharacterCount || (function(){
             'VariantHuman':0,
             'Tiefling':0,
             'Unable to parse':[]
-            },
-        allcharacters = getCharacters();
-        _.each(allcharacters, function(character){
+            };
+        _.each(characterlist, function(character){
             if(getAttrByName(character.id, 'is_npc') == 1){ return; }
             characterRace = getAttrByName(character.id, 'race');
             var isunknown = true;
@@ -160,52 +156,53 @@ var CharacterCount = CharacterCount || (function(){
             showHelp()
             return
         }
-        arg = mContent[1].toLowerCase()
+        characterlist = getCharacters();
+        arg = mContent[1].toLowerCase();
         switch(arg){
             case 'all':
-                countCharacterClasses();
-                countCharacterLevels();
-                countCharacterAlignments();
-                countCharacterRaces();
+                countCharacterClasses(characterlist);
+                countCharacterLevels(characterlist);
+                countCharacterAlignments(characterlist);
+                countCharacterRaces(characterlist);
             break;
             
             case 'everything':
-                countCharacterClasses();
-                countCharacterLevels();
-                countCharacterAlignments();
-                countCharacterRaces();
+                countCharacterClasses(characterlist);
+                countCharacterLevels(characterlist);
+                countCharacterAlignments(characterlist);
+                countCharacterRaces(characterlist);
             break;
             
             case 'alignments':
-                countCharacterAlignments();
+                countCharacterAlignments(characterlist);
             break;
             
             case 'alignment':
-                countCharacterAlignments();
+                countCharacterAlignments(characterlist);
             break
             
             case 'classes':
-                countCharacterClasses();
+                countCharacterClasses(characterlist);
             break;
             
             case 'class':
-                countCharacterClasses();
+                countCharacterClasses(characterlist);
             break
             
             case 'levels':
-                countCharacterLevels();
+                countCharacterLevels(characterlist);
             break;
             
             case 'level':
-                countCharacterLevels();
+                countCharacterLevels(characterlist);
             break;
             
             case 'races':
-                countCharacterRaces();
+                countCharacterRaces(characterlist);
             break;
             
             case 'race':
-                countCharacterRaces();
+                countCharacterRaces(characterlist);
             break;
             
             default:
@@ -243,7 +240,7 @@ var CharacterCount = CharacterCount || (function(){
             +'<h3 style="border-style:dotted; border-width:2px; padding:5px">Character Count Help</h3>'
             +'<p style="padding:5px">'
             +'To access Character Count, use the following chat message format:<br>'
-            +'<h4>!CC &lt;command&gt;</h4>'
+            +'<h4>!CC <command></h4>'
             +'<br>'
             +'<h4>Commands Available:</h4>'
             +'<em>Not case-sensitive. Script ignores all sheets listed as NPC.</em><br><br>'
