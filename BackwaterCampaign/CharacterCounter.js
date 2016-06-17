@@ -63,7 +63,10 @@ var CharacterCount = CharacterCount || (function(){
             'LG':0,'NG':0,'CG':0,'LN':0,'N':0,'CN':0,'LE':0,'NE':0,'CE':0,'Unable to parse':[]
             };
         _.each(characterlist, function(character){
-            if(getAttrByName(character.id, 'is_npc') == 1){ return; }
+            npctest = character.get('name').split(' ')[0]
+            if(getAttrByName(character.id, 'is_npc') == 1
+                || npctest == '(NPC)' || npctest == '(RCNPC)')
+                { return; }
             characterAlignment = getAttrByName(character.id, 'alignment')
             var isunknown = true;
             _.each(alignmentdictionary, function(namelist, alignmentname){
@@ -87,7 +90,10 @@ var CharacterCount = CharacterCount || (function(){
             'barbarian':0,'bard':0,'druid':0,'cleric':0,'fighter':0,'monk':0,'paladin':0,'ranger':0,'rogue':0,'sorcerer':0,'warlock':0,'wizard':0
             };
         _.each(characterlist, function(character){
-            if(getAttrByName(character.id, 'is_npc') == 1){ return; }
+            npctest = character.get('name').split(' ')[0]
+            if(getAttrByName(character.id, 'is_npc') == 1
+                || npctest == '(NPC)' || npctest == '(RCNPC)')
+                { return; }
             _.each(classes, function(value, classname){
                 classes[classname] += getAttrByName(character.id, classname+'_level')
             })
@@ -100,7 +106,10 @@ var CharacterCount = CharacterCount || (function(){
             '1':0,'2':0,'3':0,'4':0,'5':0,'6':0,'7':0,'8':0,'9':0,'10':0,'11':0,'12':0,'13':0,'14':0,'15':0,'16':0,'17':0,'18':0,'19':0,'20':0
             };
         _.each(characterlist, function(character){
-            if(getAttrByName(character.id, 'is_npc') == 1){ return; }
+            npctest = character.get('name').split(' ')[0]
+            if(getAttrByName(character.id, 'is_npc') == 1
+                || npctest == '(NPC)' || npctest == '(RCNPC)')
+                { return; }
             characterlevel = getAttrByName(character.id, 'level');
             levels[characterlevel] ++;
         })
@@ -132,7 +141,10 @@ var CharacterCount = CharacterCount || (function(){
             'Unable to parse':[]
             };
         _.each(characterlist, function(character){
-            if(getAttrByName(character.id, 'is_npc') == 1){ return; }
+            npctest = character.get('name').split(' ')[0]
+            if(getAttrByName(character.id, 'is_npc') == 1
+                || npctest == '(NPC)' || npctest == '(RCNPC)')
+                { return; }
             characterRace = getAttrByName(character.id, 'race');
             var isunknown = true;
             _.each(racedictionary, function(namelist, racename){
@@ -240,7 +252,7 @@ var CharacterCount = CharacterCount || (function(){
             +'<h3 style="border-style:dotted; border-width:2px; padding:5px">Character Count Help</h3>'
             +'<p style="padding:5px">'
             +'To access Character Count, use the following chat message format:<br>'
-            +'<h4>!CC &lt;command&gt;</h4>'
+            +'<h4>!CC <command></h4>'
             +'<br>'
             +'<h4>Commands Available:</h4>'
             +'<em>Not case-sensitive. Script ignores all sheets listed as NPC.</em><br><br>'
