@@ -5,10 +5,12 @@ var CharacterCount = CharacterCount || (function(){
     // Created to count character sheets
     // For the Backwater Living Campaign
     var
-    currentversion = '1.1',
+    currentversion = '1.0',
     lastUpdate = 1466184053,
     
-    alignmentdictionary = {
+    alignmentdictionary = {},
+    racedictionary = {},
+    storedalignmentdictionary = {
         LG: ['LAWFUL GOOD','LAWFULGOOD','L G','LG'],
         NG: ['NEUTRAL GOOD','NEUTRALGOOD','N G','NG'],
         CG: ['CHAOTIC GOOD','CHAOTICGOOD','C G','CG'],
@@ -19,8 +21,7 @@ var CharacterCount = CharacterCount || (function(){
         NE: ['NEUTRAL EVIL','NEUTRALEVIL','N E','NE'],
         CE: ['CHAOTIC EVIL','CHAOTICEVIL','C E','CE']
         },
-    
-    racedictionary = {
+    storedracedictionary = {
         'Aarakocra': ['aarakocra','aarakokra','aaracokra','aarakrocra','aarakoca'],
         'Aasimar': ['aasimar'],
         'Dragonborn': ['dragonborn'], // NEED TO EXTEND THIS FURTHER
@@ -44,24 +45,20 @@ var CharacterCount = CharacterCount || (function(){
         };
     
     checkVersion = function(){
-        s = state.CharacterCount || false;
+        if(!state.CharacterCount){ state.CharacterCount = {}; }
+        s = state.CharacterCount;
         if(s.version !== currentversion){
             switch(currentversion){
                 case '1.0':
-                    s={version:'1.0'}
-                    s.racedictionary=racedictionary
-                    s.alignmentdictionary=alignmentdictionary
-                break;
-                case '1.1':
-                    log('Updating CC Dictionaries...')
-                    s={'version':'1.1'}
-                    s.racedictionary=racedictionary
-                    s.alignmentdictionary=alignmentdictionary
-                    log('Update Complete.')
+                    log("Setting Up Dictionaries")
+                    s.alignmentdictionary = storedalignmentdictionary
+                    s.racedictionary = storedracedictionary
+                    s.version = currentversion
                 break;
             }
-            s.version = currentversion
         }
+        alignmentdictionary = s.alignmentdictionary
+        racedictionary = s.racedictionary
         log('-- Character Count v'+s.version+' -- ['+(new Date(lastUpdate*1000))+']');
     },
     
@@ -69,21 +66,24 @@ var CharacterCount = CharacterCount || (function(){
         var alignments = {
             'LG':0,'NG':0,'CG':0,'LN':0,'N':0,'CN':0,'LE':0,'NE':0,'CE':0,'Unable to parse':[]
             };
-        _.each(characterlist, function(character){
-            characterAlignment = getAttrByName(character.id, 'alignment')
+        for(character in characterlist){
+            characterAlignment = getAttrByName(characterlist[character].id, 'alignment').toUpperCase()
             var isunknown = true;
-            _.each(alignmentdictionary, function(namelist, alignmentname){
-                if(_.find(namelist, function(alignment){
-                    return characterAlignment.toUpperCase() == alignment
-                    })){
-                    alignments[alignmentname] ++;
-                    isunknown = false;
+            for(alignmentname in alignmentdictionary){
+                if(!isunknown){ break; }
+                for(word in alignmentdictionary[alignmentname]){
+                    if(!isunknown){ break; }
+                    if(characterAlignment == alignmentdictionary[alignmentname][word]){
+                        alignments[alignmentname] ++;
+                        isunknown = false;
+                    }
+                    
                 }
-            })
+            }
             if(isunknown){
                 alignments['Unable to parse'].push(characterAlignment)
             }
-        })
+        }
         if(alignments['Unable to parse'].length < 1){ alignments['Unable to parse'] = 'None' }
         printOutput(alignments,'Character alignments');
     },
