@@ -77,11 +77,10 @@ var CharacterCount = CharacterCount || (function(){
                         alignments[alignmentname] ++;
                         isunknown = false;
                     }
-                    
                 }
             }
             if(isunknown){
-                alignments['Unable to parse'].push(characterAlignment)
+                alignments['Unable to parse'].push(characterlist[character].get('name')+'=>'+characterAlignment)
             }
         }
         if(alignments['Unable to parse'].length < 1){ alignments['Unable to parse'] = 'None' }
@@ -149,7 +148,7 @@ var CharacterCount = CharacterCount || (function(){
                 }
             }
             if(isunknown){
-                races['Unable to parse'].push(characterRace)
+                races['Unable to parse'].push(characterlist[character].get('name')+'=>'+characterRace)
             }
         }
         if(races['Unable to parse'].length < 1){ races['Unable to parse'] = 'None' }
