@@ -8,7 +8,7 @@ You can check for:
   Alignment distribution
   Racial distribution
 
-!CC <command>
+!CC
   -All/Everything
   -Alignment
   -Class
