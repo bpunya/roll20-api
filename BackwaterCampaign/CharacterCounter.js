@@ -240,7 +240,7 @@ var CharacterCount = CharacterCount || (function(){
             +'<h3 style="border-style:dotted; border-width:2px; padding:5px">Character Count Help</h3>'
             +'<p style="padding:5px">'
             +'To access Character Count, use the following chat message format:<br>'
-            +'<h4>!CC <command></h4>'
+            +'<h4>!CC &lt;command&gt;</h4>'
             +'<br>'
             +'<h4>Commands Available:</h4>'
             +'<em>Not case-sensitive. Script ignores all sheets listed as NPC.</em><br><br>'
