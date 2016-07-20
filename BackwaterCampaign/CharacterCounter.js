@@ -7,7 +7,7 @@ var CharacterCount = CharacterCount || (function(){
     var
     currentversion = '1.0',
     lastUpdate = 1466184053,
-    
+
     alignmentdictionary = {},
     racedictionary = {},
     storedalignmentdictionary = {
@@ -43,7 +43,7 @@ var CharacterCount = CharacterCount || (function(){
         'Variant Human': ['variant human','human, variant','human (variant)'],
         'Tiefling': ['tiefling','teifling']
         };
-    
+
     checkVersion = function(){
         if(!state.CharacterCount){ state.CharacterCount = {}; }
         s = state.CharacterCount;
@@ -61,7 +61,7 @@ var CharacterCount = CharacterCount || (function(){
         racedictionary = s.racedictionary
         log('-- Character Count v'+s.version+' -- ['+(new Date(lastUpdate*1000))+']');
     },
-    
+
     countCharacterAlignments = function(characterlist){
         var alignments = {
             'LG':0,'NG':0,'CG':0,'LN':0,'N':0,'CN':0,'LE':0,'NE':0,'CE':0,'Unable to parse':[]
@@ -86,7 +86,7 @@ var CharacterCount = CharacterCount || (function(){
         if(alignments['Unable to parse'].length < 1){ alignments['Unable to parse'] = 'None' }
         printOutput(alignments,'Character alignments');
     },
-    
+
     countCharacterClasses = function(characterlist){
         var classes = {
             'barbarian':0,'bard':0,'cleric':0,'druid':0,'fighter':0,'monk':0,'paladin':0,'ranger':0,'rogue':0,'sorcerer':0,'warlock':0,'wizard':0
@@ -98,7 +98,7 @@ var CharacterCount = CharacterCount || (function(){
         }
         printOutput(classes,'Combined Class levels');
     },
-    
+
     countCharacterLevels  = function(characterlist){
         var levels = {
             '1':0,'2':0,'3':0,'4':0,'5':0,'6':0,'7':0,'8':0,'9':0,'10':0,'11':0,'12':0,'13':0,'14':0,'15':0,'16':0,'17':0,'18':0,'19':0,'20':0
@@ -109,7 +109,7 @@ var CharacterCount = CharacterCount || (function(){
         }
         printOutput(levels,'Character levels');
     },
-    
+
     countCharacterRaces = function(characterlist){
         var races = {
             'Aarakocra':0,
@@ -154,7 +154,7 @@ var CharacterCount = CharacterCount || (function(){
         if(races['Unable to parse'].length < 1){ races['Unable to parse'] = 'None' }
         printOutput(races,'Counted Player Races');
     },
-    
+
     handleCountType = function(mContent){
         if(mContent.length<2){
             showHelp()
@@ -169,52 +169,52 @@ var CharacterCount = CharacterCount || (function(){
                 countCharacterAlignments(characterlist);
                 countCharacterRaces(characterlist);
             break;
-            
+
             case 'everything':
                 countCharacterClasses(characterlist);
                 countCharacterLevels(characterlist);
                 countCharacterAlignments(characterlist);
                 countCharacterRaces(characterlist);
             break;
-            
+
             case 'alignments':
                 countCharacterAlignments(characterlist);
             break;
-            
+
             case 'alignment':
                 countCharacterAlignments(characterlist);
             break
-            
+
             case 'classes':
                 countCharacterClasses(characterlist);
             break;
-            
+
             case 'class':
                 countCharacterClasses(characterlist);
             break
-            
+
             case 'levels':
                 countCharacterLevels(characterlist);
             break;
-            
+
             case 'level':
                 countCharacterLevels(characterlist);
             break;
-            
+
             case 'races':
                 countCharacterRaces(characterlist);
             break;
-            
+
             case 'race':
                 countCharacterRaces(characterlist);
             break;
-            
+
             default:
                 showHelp()
             break;
         }
     },
-    
+
     handleChatInput = function(msg){
         if(msg.type !== 'api' || !playerIsGM(msg.playerid)){ return; }
         mContent = msg.content.split(/\s/);
@@ -222,26 +222,26 @@ var CharacterCount = CharacterCount || (function(){
             case "!CC":
                 handleCountType(mContent)
             break;
-            
+
             case "!cc":
                 handleCountType(mContent)
             break;
         }
     },
-    
+
     getCharacters = function(){
         return filterObjs(function(obj) {
-            if(obj.get('_type') != 'character' 
+            if(obj.get('_type') != 'character'
                 || obj.get('archived') == true)
                 { return false; }
             else if(getAttrByName(obj.id, 'is_npc') == 1
-                || obj.get('name').split(' ')[0] == '(NPC)' 
+                || obj.get('name').split(' ')[0] == '(NPC)'
                 || obj.get('name').split(' ')[0] == '(RCNPC)')
                 { return false; }
             else { return true; }
         })
     },
-    
+
     showHelp = function(){
         sendChat("CC",
             '/w gm '
@@ -262,9 +262,9 @@ var CharacterCount = CharacterCount || (function(){
             +'</p></div>'
         );
     }
-    
+
     printOutput = function(totals, outputtype){
-        
+
         var rawOutput = [ // Header formatting
             '/w gm '
             +'<br>'
@@ -281,11 +281,11 @@ var CharacterCount = CharacterCount || (function(){
         formattedOutput = rawOutput.join('');
         sendChat("CC", formattedOutput);
     }
-    
+
     registerEventHandlers = function(){
-        on('chat:message', handleChatInput)   
+        on('chat:message', handleChatInput)
     };
-    
+
     return {
         CheckVersion: checkVersion,
         RegisterEventHandlers: registerEventHandlers
