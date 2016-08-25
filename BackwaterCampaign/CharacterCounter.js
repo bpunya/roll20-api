@@ -68,18 +68,18 @@ var CharacterCount = CharacterCount || (function(){
             };
         for(character in characterlist){
             characterAlignment = getAttrByName(characterlist[character].id, 'alignment').toUpperCase()
-            var isunknown = true;
+            var isUnknown = true;
             for(alignmentname in alignmentdictionary){
-                if(!isunknown){ break; }
+                if(!isUnknown){ break; }
                 for(word in alignmentdictionary[alignmentname]){
-                    if(!isunknown){ break; }
+                    if(!isUnknown){ break; }
                     if(characterAlignment == alignmentdictionary[alignmentname][word]){
                         alignments[alignmentname] ++;
-                        isunknown = false;
+                        isUnknown = false;
                     }
                 }
             }
-            if(isunknown){
+            if(isUnknown){
                 alignments['Unable to parse'].push(characterlist[character].get('name')+'=>'+characterAlignment)
             }
         }
@@ -136,18 +136,18 @@ var CharacterCount = CharacterCount || (function(){
             };
         for(character in characterlist){
             characterRace = getAttrByName(characterlist[character].id, 'race').toLowerCase()
-            var isunknown = true;
+            var isUnknown = true;
             for(racename in racedictionary){
-                if(!isunknown){ break; }
+                if(!isUnknown){ break; }
                 for(word in racedictionary[racename]){
-                    if(!isunknown){ break; }
+                    if(!isUnknown){ break; }
                     if(characterRace == racedictionary[racename][word]){
                         races[racename] ++;
-                        isunknown = false;
+                        isUnknown = false;
                     }
                 }
             }
-            if(isunknown){
+            if(isUnknown){
                 races['Unable to parse'].push(characterlist[character].get('name')+'=>'+characterRace)
             }
         }
