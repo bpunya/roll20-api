@@ -35,10 +35,11 @@ var CharacterCount = CharacterCount || (function(){
         'Forest Gnome': ['forest gnome','forestgnome','gnome forest','gnome, forest','gnome (forest)','(forest) gnome'],
         'Rock Gnome': ['rock gnome','rockgnome','gnome rock','gnome, rock','gnome (rock)','(rock) gnome'],
         'Goliath': ['goliath'],
-        'Lightfoot Halfling': ['lightfoot halfling','lightfoothalfling','halfling lightfoot','halfling, lightfoot','halfling (lightfoot)','(lightfoot) halfling'],
+        'Lightfoot Halfling': ['lightfoot halfling','lightfoothalfling','halfling lightfoot',
+                                'halfling, lightfoot','halfling (lightfoot)','(lightfoot) halfling'],
         'Stout Halfling': ['stout halfling','stouthalfling','halfling stout','halfling, stout','halfling (stout)','(stout) halfling'],
         'Half-elf': ['half elf','halfelf','half-elf'],
-        'Half-orc': ['half orc','halforc','half-orc'],
+        'Half-orc': ['half orc','halforc','half-orc','half - orc'],
         'Human': ['human'],
         'Variant Human': ['variant human','human, variant','human (variant)'],
         'Tiefling': ['tiefling','teifling']
@@ -62,7 +63,7 @@ var CharacterCount = CharacterCount || (function(){
         log('-- Character Count v'+s.version+' -- ['+(new Date(lastUpdate*1000))+']');
     },
 
-    countCharacterAlignments = function(characterlist){
+    countCharacterAlignments = function(characterlist, msg){
         var alignments = {
             'LG':0,'NG':0,'CG':0,'LN':0,'N':0,'CN':0,'LE':0,'NE':0,'CE':0,'Unable to parse':[]
             };
@@ -84,33 +85,38 @@ var CharacterCount = CharacterCount || (function(){
             }
         }
         if(alignments['Unable to parse'].length < 1){ alignments['Unable to parse'] = 'None' }
-        printOutput(alignments,'Character alignments');
+        printOutput(alignments,'Character alignments', msg);
     },
 
-    countCharacterClasses = function(characterlist){
+    countCharacterClasses = function(characterlist, msg){
         var classes = {
-            'barbarian':0,'bard':0,'cleric':0,'druid':0,'fighter':0,'monk':0,'paladin':0,'ranger':0,'rogue':0,'sorcerer':0,'warlock':0,'wizard':0
+            'barbarian':0,'bard':0,'cleric':0,'druid':0,'fighter':0,'monk':0,
+            'paladin':0,'ranger':0,'rogue':0,'sorcerer':0,'warlock':0,'wizard':0
             };
         for(character in characterlist){
             for(classname in classes){
                 classes[classname] += getAttrByName(characterlist[character].id, classname+'_level')
             }
         }
-        printOutput(classes,'Combined Class levels');
+        printOutput(classes,'Combined Class levels', msg);
     },
 
-    countCharacterLevels  = function(characterlist){
+    countCharacterLevels  = function(characterlist, msg){
         var levels = {
-            '1':0,'2':0,'3':0,'4':0,'5':0,'6':0,'7':0,'8':0,'9':0,'10':0,'11':0,'12':0,'13':0,'14':0,'15':0,'16':0,'17':0,'18':0,'19':0,'20':0
+            '1':0,'2':0,'3':0,'4':0,'5':0,'6':0,'7':0,'8':0,'9':0,'10':0,
+            '11':0,'12':0,'13':0,'14':0,'15':0,'16':0,'17':0,'18':0,'19':0,'20':0
             };
         for(character in characterlist){
             characterlevel = getAttrByName(characterlist[character].id, 'level');
-            levels[characterlevel] ++;
+            if(characterlevel) {
+                levels[characterlevel] ++;
+            }
+
         }
-        printOutput(levels,'Character levels');
+        printOutput(levels,'Character levels', msg);
     },
 
-    countCharacterRaces = function(characterlist){
+    countCharacterRaces = function(characterlist, msg){
         var races = {
             'Aarakocra':0,
             'Aasimar':0,
@@ -152,65 +158,65 @@ var CharacterCount = CharacterCount || (function(){
             }
         }
         if(races['Unable to parse'].length < 1){ races['Unable to parse'] = 'None' }
-        printOutput(races,'Counted Player Races');
+        printOutput(races,'Counted Player Races', msg);
     },
 
-    handleCountType = function(mContent){
+    handleCountType = function(mContent, msg){
         if(mContent.length<2){
-            showHelp()
+            showHelp(msg)
             return
         }
         characterlist = getCharacters();
         arg = mContent[1].toLowerCase();
         switch(arg){
             case 'all':
-                countCharacterClasses(characterlist);
-                countCharacterLevels(characterlist);
-                countCharacterAlignments(characterlist);
-                countCharacterRaces(characterlist);
+                countCharacterClasses(characterlist, msg);
+                countCharacterLevels(characterlist, msg);
+                countCharacterAlignments(characterlist, msg);
+                countCharacterRaces(characterlist, msg);
             break;
 
             case 'everything':
-                countCharacterClasses(characterlist);
-                countCharacterLevels(characterlist);
-                countCharacterAlignments(characterlist);
-                countCharacterRaces(characterlist);
+                countCharacterClasses(characterlist, msg);
+                countCharacterLevels(characterlist, msg);
+                countCharacterAlignments(characterlist, msg);
+                countCharacterRaces(characterlist, msg);
             break;
 
             case 'alignments':
-                countCharacterAlignments(characterlist);
+                countCharacterAlignments(characterlist, msg);
             break;
 
             case 'alignment':
-                countCharacterAlignments(characterlist);
+                countCharacterAlignments(characterlist, msg);
             break
 
             case 'classes':
-                countCharacterClasses(characterlist);
+                countCharacterClasses(characterlist, msg);
             break;
 
             case 'class':
-                countCharacterClasses(characterlist);
+                countCharacterClasses(characterlist, msg);
             break
 
             case 'levels':
-                countCharacterLevels(characterlist);
+                countCharacterLevels(characterlist, msg);
             break;
 
             case 'level':
-                countCharacterLevels(characterlist);
+                countCharacterLevels(characterlist, msg);
             break;
 
             case 'races':
-                countCharacterRaces(characterlist);
+                countCharacterRaces(characterlist, msg);
             break;
 
             case 'race':
-                countCharacterRaces(characterlist);
+                countCharacterRaces(characterlist, msg);
             break;
 
             default:
-                showHelp()
+                showHelp(msg)
             break;
         }
     },
@@ -220,11 +226,11 @@ var CharacterCount = CharacterCount || (function(){
         mContent = msg.content.split(/\s/);
         switch(mContent[0]){
             case "!CC":
-                handleCountType(mContent)
+                handleCountType(mContent, msg)
             break;
 
             case "!cc":
-                handleCountType(mContent)
+                handleCountType(mContent, msg)
             break;
         }
     },
@@ -242,9 +248,9 @@ var CharacterCount = CharacterCount || (function(){
         })
     },
 
-    showHelp = function(){
+    showHelp = function(msg){
         sendChat("CC",
-            '/w gm '
+            `/w ${msg.who} `
             +'<br>'
             +'<div style="background-color:#ffffff; padding:5px; border-style:solid; border-width:2px;">'
             +'<h3 style="border-style:dotted; border-width:2px; padding:5px">Character Count Help</h3>'
@@ -263,10 +269,10 @@ var CharacterCount = CharacterCount || (function(){
         );
     }
 
-    printOutput = function(totals, outputtype){
+    printOutput = function(totals, outputtype, msg){
 
         var rawOutput = [ // Header formatting
-            '/w gm '
+            `/w ${msg.who} `
             +'<br>'
             +'<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">'
             +'<div style="border-width:2px; border-style:dotted;"><h3 style="padding:5px;">'+outputtype+'.</h3></div><br>'];
