@@ -156,7 +156,9 @@ var CharacterCount = CharacterCount || (function(){
                 }
             }
             if(isUnknown){
-                races['Unable to parse'].push(characterlist[character].get('name')+'=>'+characterRace)
+                if(characterRace.length > 0){
+                    races['Unable to parse'].push(characterlist[character].get('name')+'=>'+characterRace)
+                }
             }
         }
         if(races['Unable to parse'].length < 1){ races['Unable to parse'] = 'None' }
@@ -171,20 +173,6 @@ var CharacterCount = CharacterCount || (function(){
         characterlist = getCharacters();
         arg = mContent[1].toLowerCase();
         switch(arg){
-            case 'all':
-                countCharacterClasses(characterlist, msg);
-                countCharacterLevels(characterlist, msg);
-                countCharacterAlignments(characterlist, msg);
-                countCharacterRaces(characterlist, msg);
-            break;
-
-            case 'everything':
-                countCharacterClasses(characterlist, msg);
-                countCharacterLevels(characterlist, msg);
-                countCharacterAlignments(characterlist, msg);
-                countCharacterRaces(characterlist, msg);
-            break;
-
             case 'alignments':
                 countCharacterAlignments(characterlist, msg);
             break;
@@ -244,7 +232,9 @@ var CharacterCount = CharacterCount || (function(){
                 { return false; }
             else if(getAttrByName(obj.id, 'is_npc') == 1
                 || obj.get('name').split(' ')[0] == '(NPC)'
-                || obj.get('name').split(' ')[0] == '(RCNPC)')
+                || obj.get('name').split(' ')[0] == '(RCNPC)'
+                || obj.get('name').split(' ')[0] == '[NPC]'
+                || obj.get('name').split(' ')[0] == '[RCNPC]')
                 { return false; }
             else { return true; }
         })
@@ -266,7 +256,6 @@ var CharacterCount = CharacterCount || (function(){
             +'<strong>Class(es)</strong> ---- <br>Counts the combined total of all class levels.<br>'
             +'<strong>Level(s)</strong> ---- <br>Counts the amount of players at each level.<br>'
             +'<strong>Race(s)</strong> ---- <br>Counts all listed player races. Races unable to be parsed are listed in a seperate line.<br>'
-            +'<strong>All or Everything</strong> ---- <br>Does all of the above.<br>'
             +'</p></div>'
         );
     }
