@@ -15,7 +15,7 @@ var CharacterCount = CharacterCount || (function(){
         NG: ['NEUTRAL GOOD','NEUTRALGOOD','N G','NG'],
         CG: ['CHAOTIC GOOD','CHAOTICGOOD','C G','CG'],
         LN: ['LAWFUL NEUTRAL','LAWFULNEUTRAL','L N','LN'],
-        N:  ['NEUTRAL','TRUE NEUTRAL','TRUENEUTRAL','T N','N'],
+        N:  ['NEUTRAL','TRUE NEUTRAL','TRUENEUTRAL','T N','N','TN'],
         CN: ['CHAOTIC NEUTRAL','CHAOTICNEUTRAL','C N','CN'],
         LE: ['LAWFUL EVIL','LAWFULEVIL','L E','LE'],
         NE: ['NEUTRAL EVIL','NEUTRALEVIL','N E','NE'],
@@ -39,7 +39,7 @@ var CharacterCount = CharacterCount || (function(){
                                 'halfling, lightfoot','halfling (lightfoot)','(lightfoot) halfling'],
         'Stout Halfling': ['stout halfling','stouthalfling','halfling stout','halfling, stout','halfling (stout)','(stout) halfling'],
         'Half-elf': ['half elf','halfelf','half-elf'],
-        'Half-orc': ['half orc','halforc','half-orc','half - orc'],
+        'Half-orc': ['half orc','halforc','half-orc'],
         'Human': ['human'],
         'Variant Human': ['variant human','human, variant','human (variant)'],
         'Tiefling': ['tiefling','teifling']
@@ -81,7 +81,9 @@ var CharacterCount = CharacterCount || (function(){
                 }
             }
             if(isUnknown){
-                alignments['Unable to parse'].push(characterlist[character].get('name')+'=>'+characterAlignment)
+                if(characterAlignment.length > 0){
+                    alignments['Unable to parse'].push(characterlist[character].get('name')+'=>'+characterAlignment)
+                }
             }
         }
         if(alignments['Unable to parse'].length < 1){ alignments['Unable to parse'] = 'None' }
