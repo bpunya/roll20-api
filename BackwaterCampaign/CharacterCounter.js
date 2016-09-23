@@ -6,7 +6,7 @@ var CharacterCount = CharacterCount || (function(){
     // For the Backwater Living Campaign
     var
     currentversion = '1.0',
-    lastUpdate = 1466184053,
+    lastUpdate = 1474603698,
 
     alignmentdictionary = {},
     racedictionary = {},
