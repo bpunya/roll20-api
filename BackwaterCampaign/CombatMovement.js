@@ -1,4 +1,4 @@
-// Github:
+// Github: https://github.com/bpunya/roll20-api/blob/master/BackwaterCampaign/CombatMovement.js
 // Author: PaprikaCC (Bodin Punyaprateep)
 
 var CombatMovement = CombatMovement || (function(){
@@ -11,7 +11,7 @@ var CombatMovement = CombatMovement || (function(){
 
     var
     version = "1.0",
-    lastUpdate = "",
+    lastUpdate = "1475209152",
 
     Chat_Formatting_START = '<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">'+
                             '<div style="border-width:2px; border-style:dotted; padding:5px">',
