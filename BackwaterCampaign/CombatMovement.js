@@ -12,7 +12,7 @@ var CombatMovement = CombatMovement || (function(){
     var
     version = "1.0",
     lastUpdate = 1475270598,
-    TokenTrackingArray = {};
+    TrackingArray = {'turnorder':{},'initialtoken':false};
 
     Chat_Formatting_START = '<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">'+
                             '<div style="border-width:2px; border-style:dotted; padding:5px">',
@@ -20,55 +20,103 @@ var CombatMovement = CombatMovement || (function(){
     Chat_Formatting_END = '</div>'+
                           '</div>';
 
+    // On boot, do this stuff
     checkVersion = function() {
-        if(!state.CombatMovement) { state.CombatMovement = {'active':false}; }
+        if(!state.CombatMovement) { state.CombatMovement = {'active':false, 'autoreset':true}; }
         s = state.CombatMovement;
+        if(!Campaign().get('initiativepage')) {
+            log('Resetting Combat Movement data...')
+            clearData();
+        }
         log('-- Combat Movement v'+version+' -- ['+(new Date(lastUpdate*1000))+']');
     },
 
+    // When the turnorder page closes, call this function and clear data.
     checkCombatStatus = function() {
-
+        if(!Campaign().get('initiativepage') && s.autoreset) {
+            clearData();
+        }
     },
 
+    // Call this when we advance the turn order.
     checkCurrentRound = function() {
-
+        var current_turn_order = JSON.parse(Campaign().get('turnorder'))
+        if()
+        //Checks if a full combat round has passed.
+        //If yes, for every object in TrackingArray[turnorder]
+        //set TrackingArray[turnorder][object][remainingmovement] == TrackingArray[turnorder][object][totalmovement];
     },
-
-    clearData = function() {
-        s.active = false;
-        TokenTrackingArray = {};
-    };
 
     changeOptions = function(msg, option) {
+        var actionTaken = false;
         switch(option) {
-            case 'on':
-            s.active = true;
-            actionTaken = 'is now ACTIVE';
+            case 'start':
+            if(!s.active && Campaign().get('initiativepage')) {
+                s.active = true;
+                freezeTurnOrder();
+                actionTaken = 'is now ACTIVE';
+            }
             break;
 
-            case 'off':
-            s.active = false;
-            actionTaken = 'is temporarily INACTIVE';
+            case 'pause':
+            if(s.active && Campaign().get('initiativepage')) {
+                s.active = false;
+                actionTaken = 'has been paused'
+            }
             break;
 
             case 'toggle':
-            s.active = !s.active;
-            actionTaken = s.active ? 'is now ACTIVE' : 'is temporarily INACTIVE';
+            if(Campaign().get('initiativepage')) {
+                s.active = !s.active;
+                actionTaken = s.active ? 'is now ACTIVE' : 'has been paused';
+            }
             break;
 
             case 'reset':
+            if(TrackingArray['turnorder'].length > 0) {
+                clearData();
+                s.active = true;
+                freezeTurnOrder();
+                actionTaken = 'has reset the stored turnorder'
+            }
+            break;
+
+            case 'stop':
             actionTaken = 'has cleared all stored information';
             clearData();
             break;
         }
-        output = `Combat Movement ${actionTaken}`
-        printToChat(msg, output)
+        if(actionTaken) {
+            output = `${Chat_Formatting_START} Combat Movement ${actionTaken}${Chat_Formatting_END}`
+            printToChat(msg, output)
+        }
     },
 
-    printToChat = function(msg, content) {
-        sendChat('Combat Movement', `/w ${msg.who} <br>`+
-                content
-                );
+    clearData = function() {
+        s.active = false;
+        TrackingArray = {'turnorder':{},'initialtoken':false};
+    };
+
+    freezeTurnOrder = function() {
+        var tokenID, characterID,
+        current_turn_order = JSON.parse(Campaign().get('turnorder'));
+        if(current_turn_order.length < 1) {
+            printToChat({who:'gm'}, "You haven't rolled initiative yet!")
+            return;
+        }
+
+        // Set initial token
+        TrackingArray.initialtoken = current_turn_order[0]['id']
+
+        // Set turnorder and movements
+        for(i = 0; i < current_turn_order.length; i++) {
+            tokenID = current_turn_order[i]['id'];
+            characterID = getObj('graphic', tokenID).get('represents') || false;
+            if(characterID) {
+                movement = getAttrByName(characterID, 'speed');
+                TrackingArray.turnorder[tokenID] = [movement, movement];
+            }
+        }
     },
 
     handleChatInput = function(msg) {
@@ -80,24 +128,33 @@ var CombatMovement = CombatMovement || (function(){
             case '!CM':
 
                 switch(args[1]) {
-                    case '--on':
-                    changeOptions(msg, 'on')
+                    case '--start':
+                    changeOptions(msg, 'start')
                     break;
 
-                    case '--off':
-                    changeOptions(msg, 'off')
+                    case '--pause':
+                    changeOptions(msg, 'pause')
                     break;
 
                     case '--toggle':
                     changeOptions(msg, 'toggle');
                     break;
 
+                    case '--stop':
+                    changeOptions(msg, 'stop');
+                    break;
+
                     case '--reset':
-                    changeOptions(msg, 'reset');
+                    changeOptions(msg, 'reset')
                     break;
 
                     case '--help':
                     showHelp(msg)
+                    break;
+
+                    case 'debug':
+                    state.CombatMovement = {'active':false, 'autoreset':true};
+                    TrackingArray = {'turnorder':{},'initialtoken':false};
                     break;
 
                     default:
@@ -107,9 +164,10 @@ var CombatMovement = CombatMovement || (function(){
         }
     },
 
-    handleTokenMovement = function(obj, prev) {
-        if( !s.active || !(Campaign().get('initiativepage')) ) { return; }
-
+    printToChat = function(msg, content) {
+        sendChat('Combat Movement', `/w ${msg.who} <br>`+
+                content
+                );
     },
 
     showHelp = function(msg) {
@@ -117,14 +175,20 @@ var CombatMovement = CombatMovement || (function(){
         helpContent = Chat_Formatting_START+
                 '<h3>Combat Movement help</h3><br>'+
                 '<strong>Available Options:</strong><br>'+
-                '--on <i>// Activates the script.</i><br>'+
-                '--off <i>// Disables the script.</i><br>'+
+                '--start <i>// Begins tracking token movement.</i><br>'+
+                '--pause <i>// Disables the script temporarily.</i><br>'+
                 '--toggle <i>// Toggles the current state.</i><br>'+
                 '--reset <i>// Resets all tracking (Use after a fight)</i><br>'+
-                '<br>The script is currently <b>' + currentState + '</b>.' +
+                '--stop <i>// Completely clears all tracked data and stops the script</i><br>'
+                '<br>The script is currently <b>' + currentState + '</b>, and will automatically stop when the turn order window is closed.' +
                 Chat_Formatting_END;
         printToChat(msg, helpContent);
     };
+
+    handleTokenMovement = function(obj, prev) {
+        if( !s.active || !(Campaign().get('initiativepage')) ) { return; }
+        //check token ID against TrackingArray[turnorder][tokenid][remainingmovement]
+    },
 
     registerEventHandlers = function(){
         on('chat:message', handleChatInput);
