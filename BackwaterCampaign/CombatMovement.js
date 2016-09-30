@@ -11,7 +11,7 @@ var CombatMovement = CombatMovement || (function(){
 
     var
     version = "1.0",
-    lastUpdate = "",
+    lastUpdate = 1475270598,
     TokenTrackingArray = {};
 
     Chat_Formatting_START = '<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">'+
