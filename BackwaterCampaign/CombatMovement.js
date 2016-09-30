@@ -11,7 +11,8 @@ var CombatMovement = CombatMovement || (function(){
 
     var
     version = "1.0",
-    lastUpdate = "1475209152",
+    lastUpdate = "",
+    TokenTrackingArray = {};
 
     Chat_Formatting_START = '<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">'+
                             '<div style="border-width:2px; border-style:dotted; padding:5px">',
@@ -20,10 +21,23 @@ var CombatMovement = CombatMovement || (function(){
                           '</div>';
 
     checkVersion = function() {
-        if(!state.CombatMovement) { state.CombatMovement = {'active':true}; }
+        if(!state.CombatMovement) { state.CombatMovement = {'active':false}; }
         s = state.CombatMovement;
         log('-- Combat Movement v'+version+' -- ['+(new Date(lastUpdate*1000))+']');
     },
+
+    checkCombatStatus = function() {
+
+    },
+
+    checkCurrentRound = function() {
+
+    },
+
+    clearData = function() {
+        s.active = false;
+        TokenTrackingArray = {};
+    };
 
     changeOptions = function(msg, option) {
         switch(option) {
@@ -34,12 +48,17 @@ var CombatMovement = CombatMovement || (function(){
 
             case 'off':
             s.active = false;
-            actionTaken = 'is INACTIVE';
+            actionTaken = 'is temporarily INACTIVE';
             break;
 
             case 'toggle':
             s.active = !s.active;
-            actionTaken = s.active ? 'is now ACTIVE' : 'is INACTIVE';
+            actionTaken = s.active ? 'is now ACTIVE' : 'is temporarily INACTIVE';
+            break;
+
+            case 'reset':
+            actionTaken = 'has cleared all stored information';
+            clearData();
             break;
         }
         output = `Combat Movement ${actionTaken}`
@@ -73,6 +92,10 @@ var CombatMovement = CombatMovement || (function(){
                     changeOptions(msg, 'toggle');
                     break;
 
+                    case '--reset':
+                    changeOptions(msg, 'reset');
+                    break;
+
                     case '--help':
                     showHelp(msg)
                     break;
@@ -97,6 +120,7 @@ var CombatMovement = CombatMovement || (function(){
                 '--on <i>// Activates the script.</i><br>'+
                 '--off <i>// Disables the script.</i><br>'+
                 '--toggle <i>// Toggles the current state.</i><br>'+
+                '--reset <i>// Resets all tracking (Use after a fight)</i><br>'+
                 '<br>The script is currently <b>' + currentState + '</b>.' +
                 Chat_Formatting_END;
         printToChat(msg, helpContent);
@@ -104,7 +128,9 @@ var CombatMovement = CombatMovement || (function(){
 
     registerEventHandlers = function(){
         on('chat:message', handleChatInput);
-        on("change:graphic", handleTokenMovement);
+        on('change:graphic', handleTokenMovement);
+        on('change:campaign:turnorder', checkCurrentRound);
+        on('change:campaign:initiativepage', checkCombatStatus);
     };
 
     return {
@@ -118,4 +144,5 @@ on('ready', function(){
     'use strict'
     CombatMovement.CheckVersion()
     CombatMovement.RegisterEventHandlers()
+    s.active = false;
 });
