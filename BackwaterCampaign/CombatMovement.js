@@ -24,12 +24,10 @@ var CombatMovement = CombatMovement || (function(){
     checkVersion = function() {
         if(!state.CombatMovement) { state.CombatMovement = {'active':false, 'autoreset':true}; }
         s = state.CombatMovement;
-
         if(!Campaign().get('initiativepage')) {
             log('Resetting Combat Movement data...')
             clearData();
         }
-
         log('-- Combat Movement v'+version+' -- ['+(new Date(lastUpdate*1000))+']');
     },
 
@@ -160,7 +158,7 @@ var CombatMovement = CombatMovement || (function(){
 
     handleTokenMovement = function(obj, prev) {
         if( !s.active || !(Campaign().get('initiativepage')) ) { return; }
-        //check token ID against TrackingArray[turnorder][tokenid][remainingmovement]
+        if(!)
     },
 
     showHelp = function(msg) {
