@@ -23,7 +23,7 @@ var CombatMovement = CombatMovement || (function(){
 
     var
     version = "1.0",
-    lastUpdate = 1475270598,
+    lastUpdate = 1475429873,
     TrackingArray = {'turnorder':{},'initialtoken':false},
 
     Chat_Formatting_START = '<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">'+
