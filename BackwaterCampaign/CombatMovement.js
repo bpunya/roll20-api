@@ -211,7 +211,6 @@ var CombatMovement = CombatMovement || (function(){
     };
 
     handleTokenMovement = function(obj, prev) {
-        log(obj.id)
         if( !s.active
            || (!Campaign().get('initiativepage'))
            || (obj.get('represents') == '')
@@ -220,17 +219,38 @@ var CombatMovement = CombatMovement || (function(){
         if(TrackingArray.turnorder[obj.id][0] <= 0) {
             obj.set({left: prev.left, top: prev.top, rotation: prev.rotation});
         }
-        // check movement
-        log(obj.get('left'))
-        log(obj.get('top'))
-        movementX = (obj.get('left') - prev['left'])/14;
-        directionX = movementX > 0 ? 'right' : 'left';
-        movementY = (obj.get('top') - prev['top'])/14;
-        directionY = movementY > 0 ? 'down' : 'up'
-        log(`I moved ${Math.abs(movementX)} feet ${directionX} and ${Math.abs(movementY)} feet ${directionY}.`)
-        // Now we figure out how to translate these numbers into a "token moved this distance" number.
-        // After that is figured out, just subtract it from TrackingArray.turnorder[obj.id][0] if it's
-        // legal. If it's not legal, just shift stuff back.
+
+        // Get page properties
+        currentPage = getObj('page', obj.get('_pageid'));
+        currentPageDiagonal = currentPage.get('diagonaltype')
+        currentPageScaleNumber = currentPage.get('scale_number ')
+        currentPageGridType = currentPage.get('grid_type')
+
+        // If the page is weird, just don't bother
+        if( !(currentPageGridType == 'square')
+            ) { return; }
+
+        movementX = (obj.get('left') - prev['left'])*currentPageScaleNumber/70;
+        movementY = (obj.get('top') - prev['top'])*currentPageScaleNumber/70;
+
+        if(currentPageDiagonal == 'foure') {
+            totalmovement = movementX > movementY ? movementX : movementY;
+        } else if(currentPageDiagonal == 'threefive') {
+            greater = movementX > movementY ? movementX : movementY;
+            lower = movementX < movementY ? movementX : movementY;
+            totalmovement = higher + (Math.floor(lower/10)*currentPageScaleNumber);
+        } else if(currentPageDiagonal == 'pythagorean') {
+            totalmovement = Math.sqrt(movementX^2 + movementY^2)
+        } else if(currentPageDiagonal == 'manhattan') {
+            totalmovement = movementX + movementY;
+        }
+
+        // Can we move this distance? If no, stop.
+        if(TrackingArray.turnorder[obj.id][0] < totalmovement) {
+            obj.set({left: prev.left, top: prev.top, rotation: prev.rotation});
+        } else {
+            TrackingArray.turnorder[obj.id][0] = TrackingArray.turnorder[obj.id][0] - totalmovement;
+        }
     },
 
     registerEventHandlers = function(){
