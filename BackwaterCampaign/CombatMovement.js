@@ -55,8 +55,8 @@ var CombatMovement = CombatMovement || (function(){
         if(!s.active) { return; }
         var currentTokenID = JSON.parse(Campaign().get('turnorder'))[0]['id'];
         if(currentTokenID == TrackingArray.initialtoken) {
-            for(i=0; i < TrackingArray.turnorder.length; i++) {
-                TrackingArray.turnorder[i][0] = TrackingArray.turnorder[i][1]
+            for(var token in TrackingArray.turnorder) {
+                TrackingArray.turnorder[token][0] = TrackingArray.turnorder[token][1];
             }
         }
     },
@@ -87,7 +87,7 @@ var CombatMovement = CombatMovement || (function(){
             break;
 
             case 'reset':
-            if(TrackingArray['turnorder'].length > 0) {
+            if(s.active) {
                 clearData();
                 s.active = true;
                 freezeTurnOrder();
@@ -112,10 +112,10 @@ var CombatMovement = CombatMovement || (function(){
     };
 
     freezeTurnOrder = function() {
-        var tokenID, characterID,
+        var tokenID, characterID, movement,
         current_turn_order = JSON.parse(Campaign().get('turnorder'));
         if(current_turn_order.length < 1) {
-            printToChat({who:'gm'}, "You haven't rolled initiative yet!")
+            printToChat({'who':'gm'}, "You haven't rolled initiative yet!")
             return;
         }
 
@@ -127,15 +127,17 @@ var CombatMovement = CombatMovement || (function(){
             tokenID = current_turn_order[i]['id'];
             characterID = getObj('graphic', tokenID).get('represents') || false;
             if(characterID) {
-                movement = getAttrByName(characterID, 'speed');
-                TrackingArray.turnorder[tokenID] = [movement, movement];
+                movement = parseInt(getAttrByName(characterID, 'speed'), 10);
+                if(!isNaN(movement)) {
+                    TrackingArray.turnorder[tokenID] = [movement, movement];
+                }
             }
         }
     },
 
     handleChatInput = function(msg) {
         if(!playerIsGM(msg.playerid)) { return; }
-        args = msg.content.split(/\s/)
+        var args = msg.content.split(/\s/)
         switch(args[0]) {
             case '!combatmovement':
             case '!CombatMovement':
@@ -196,7 +198,7 @@ var CombatMovement = CombatMovement || (function(){
     },
 
     showHelp = function(msg) {
-        currentState = s.active ? 'ACTIVE' : 'INACTIVE';
+        var currentState = s.active ? 'ACTIVE' : 'INACTIVE',
         helpContent = Chat_Formatting_START+
                 '<h3>Combat Movement help</h3><br>'+
                 '<strong>Available Options:</strong><br>'+
@@ -221,22 +223,24 @@ var CombatMovement = CombatMovement || (function(){
         }
 
         // Get page properties
-        currentPage = getObj('page', obj.get('_pageid'));
-        currentPageDiagonal = currentPage.get('diagonaltype')
-        currentPageScaleNumber = currentPage.get('scale_number ')
-        currentPageGridType = currentPage.get('grid_type')
+        var movementX, movementY, higher, lower, totalmovement,
+        currentPage = getObj('page', obj.get('_pageid')),
+        currentPageDiagonal = currentPage.get('diagonaltype'),
+        currentPageScaleNumber = currentPage.get('scale_number'),
+        currentPageGridType = currentPage.get('grid_type');
 
         // If the page is weird, just don't bother
         if( !(currentPageGridType == 'square')
             ) { return; }
 
-        movementX = (obj.get('left') - prev['left'])*currentPageScaleNumber/70;
-        movementY = (obj.get('top') - prev['top'])*currentPageScaleNumber/70;
+        // Check change in position
+        movementX = Math.abs((obj.get('left') - prev['left']))*currentPageScaleNumber/70;
+        movementY = Math.abs((obj.get('top') - prev['top']))*currentPageScaleNumber/70;
 
         if(currentPageDiagonal == 'foure') {
             totalmovement = movementX > movementY ? movementX : movementY;
         } else if(currentPageDiagonal == 'threefive') {
-            greater = movementX > movementY ? movementX : movementY;
+            higher = movementX > movementY ? movementX : movementY;
             lower = movementX < movementY ? movementX : movementY;
             totalmovement = higher + (Math.floor(lower/10)*currentPageScaleNumber);
         } else if(currentPageDiagonal == 'pythagorean') {
