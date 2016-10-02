@@ -1,5 +1,6 @@
 // Github: https://github.com/bpunya/roll20-api/blob/master/BackwaterCampaign/CombatMovement.js
 // Author: PaprikaCC (Bodin Punyaprateep)
+/******************************************************************************/
 
 var CombatMovement = CombatMovement || (function(){
 
@@ -8,23 +9,28 @@ var CombatMovement = CombatMovement || (function(){
     ** movement available to them. Allowed movement is reset at the top of the
     ** turn order.
     **
-    ** The TrackingArray.turnorder object holds the allowed movement of each
+    ** The turnorder object holds the allowed movement of each
     ** token in an array. The first number in the array is the remaining movement
     ** and the second number is the token's total movement. This script ignores
     ** all tokens that do not have a character sheet attached. Example below:
     **
-    ** TrackingArray.turnorder[0] = {'-Ksdf9234jfs9':[30,30]}
+    ** Assuming obj.id = '-Ksdf9234jfs9'
+    **
+    ** turnorder[obj.id] = {'-Ksdf9234jfs9':[30,30]}
     **
     ** The token with ID '-Ksdf9234jfs9' has 30 units of movement per combat
-    ** round. As they move, the first number decrements by the amount they move
+    ** round. As it moves, the first number decrements by the amount of movement
     ** until it hits 0. When it hits 0, the script will disallow all movement
-    ** until the combat turn finishes.
+    ** until the token's next turn.
     */
 
     var
     version = "1.0",
     lastUpdate = 1475429873,
-    TrackingArray = {'turnorder':{},'initialtoken':false},
+    movementattribute = 'speed',
+    turnorder = {},
+    turncounter = 1,
+    initialtoken = false,
 
     Chat_Formatting_START = '<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">'+
                             '<div style="border-width:2px; border-style:dotted; padding:5px">',
@@ -32,7 +38,8 @@ var CombatMovement = CombatMovement || (function(){
     Chat_Formatting_END = '</div>'+
                           '</div>';
 
-    // On boot, do this stuff
+/******************************************************************************/
+
     checkVersion = function() {
         if(!state.CombatMovement) { state.CombatMovement = {'active':false, 'autoreset':true}; }
         s = state.CombatMovement;
@@ -54,12 +61,14 @@ var CombatMovement = CombatMovement || (function(){
     checkCurrentRound = function() {
         if(!s.active) { return; }
         var currentTokenID = JSON.parse(Campaign().get('turnorder'))[0]['id'];
-        if(currentTokenID == TrackingArray.initialtoken) {
-            for(var token in TrackingArray.turnorder) {
-                TrackingArray.turnorder[token][0] = 0;
+        if(currentTokenID == initialtoken) {
+            for(var token in turnorder) {
+                turnorder[token][0] = 0;
             }
+            turncounter++;
+            printToChat({'who':'gm'}, `Round ${turncounter} has started.`)
         }
-        TrackingArray.turnorder[currentTokenID][0] = TrackingArray.turnorder[currentTokenID][1];
+        turnorder[currentTokenID][0] = turnorder[currentTokenID][1];
     },
 
     changeOptions = function(msg, option) {
@@ -69,7 +78,7 @@ var CombatMovement = CombatMovement || (function(){
             if(!s.active && Campaign().get('initiativepage')) {
                 s.active = true;
                 freezeTurnOrder();
-                actionTaken = 'is now ACTIVE';
+                actionTaken = `is now ACTIVE. Round ${turncounter} has begun.`;
             }
             break;
 
@@ -87,10 +96,15 @@ var CombatMovement = CombatMovement || (function(){
             }
             break;
 
+            case 'auto-reset':
+            s.autoreset = !s.autoreset;
+            actionTaken = s.autoreset ? 'automatically stops when the initiative window is closed'
+                                      : 'continues running when the initiative window is closed';
+            break;
+
             case 'reset':
             if(s.active) {
-                clearData();
-                s.active = true;
+                initialtoken = false;
                 freezeTurnOrder();
                 actionTaken = 'has reset the stored turnorder'
             }
@@ -109,7 +123,9 @@ var CombatMovement = CombatMovement || (function(){
 
     clearData = function() {
         s.active = false;
-        TrackingArray = {'turnorder':{},'initialtoken':false};
+        turnorder = {};
+        initialtoken = false;
+        turncounter = 1;
     };
 
     freezeTurnOrder = function() {
@@ -119,26 +135,24 @@ var CombatMovement = CombatMovement || (function(){
             printToChat({'who':'gm'}, "You haven't rolled initiative yet!")
             return;
         }
-
-        // Set initial token
-        TrackingArray.initialtoken = current_turn_order[0]['id']
+        // initialtoken will be used to determine if a turn has passed.
+        initialtoken = current_turn_order[0]['id']
 
         // Set turnorder and movements
         for(i = 0; i < current_turn_order.length; i++) {
             tokenID = current_turn_order[i]['id'];
             characterID = getObj('graphic', tokenID).get('represents') || false;
-            if(characterID) {
-                movement = parseInt(getAttrByName(characterID, 'speed'), 10);
+            if( characterID && !(getObj('character', characterID).get('represents') == '') ) {
+                movement = parseInt(getAttrByName(characterID, movementattribute), 10) || 0;
                 if(!isNaN(movement)) {
-                    if(tokenID == TrackingArray.initialtoken) {
-                        TrackingArray.turnorder[tokenID] = [movement, movement];
+                    if(tokenID == initialtoken) {
+                        turnorder[tokenID] = [movement, movement];
                     } else {
-                        TrackingArray.turnorder[tokenID] = [0, movement];
+                        turnorder[tokenID] = [0, movement];
                     }
                 }
             }
         }
-        // Now set the starting character's movement properly.
     },
 
     handleChatInput = function(msg) {
@@ -148,6 +162,23 @@ var CombatMovement = CombatMovement || (function(){
             case '!combatmovement':
             case '!CombatMovement':
             case '!CM':
+
+                if(msg.selected && args.length == 1) {
+                    if(!s.active) { return; }
+                    var selectedtokenID,
+                    selectedtokenNameArray = [];
+
+                    for(i=0; i < msg.selected.length; i++) {
+                        selectedtokenID = msg.selected[i]._id;
+                        if(turnorder[selectedtokenID]) {
+                            turnorder[selectedtokenID][0] += turnorder[selectedtokenID][1]
+                            selectedtokenNameArray.push(getObj('graphic', selectedtokenID).get('name'))
+                        }
+                    }
+                    output = `You have given dash movement to ${selectedtokenNameArray.join(', ')}`
+                    printToChat(msg, output);
+                    return;
+                }
 
                 switch(args[1]) {
                     case '--start':
@@ -159,7 +190,16 @@ var CombatMovement = CombatMovement || (function(){
                     break;
 
                     case '--toggle':
-                    changeOptions(msg, 'toggle');
+
+                        switch(args[2]) {
+                            case 'auto-reset':
+                            changeOptions(msg, 'auto-reset');
+                            break;
+
+                            default:
+                            changeOptions(msg, 'toggle');
+                            break;
+                        }
                     break;
 
                     case '--stop':
@@ -180,12 +220,14 @@ var CombatMovement = CombatMovement || (function(){
                             case 'log':
                             log(`Combat Movement v${version}`)
                             log(`Is the script on? ${s.active}.`)
-                            log(TrackingArray)
+                            log(initialtoken)
+                            log(turnorder)
                             break;
 
                             case 'clear':
                             state.CombatMovement = {'active':false, 'autoreset':true};
-                            TrackingArray = {'turnorder':{},'initialtoken':false};
+                            turnorder = {};
+                            initialtoken = {};
                             break;
                         }
                     break;
@@ -204,16 +246,23 @@ var CombatMovement = CombatMovement || (function(){
     },
 
     showHelp = function(msg) {
-        var currentState = s.active ? 'ACTIVE' : 'INACTIVE',
+        var
+        currentState = s.active ? 'ACTIVE' : 'INACTIVE',
+        currentAutoResetState = s.autoreset ? ' automatically stop ' : ' continue to run ',
         helpContent = Chat_Formatting_START+
                 '<h3>Combat Movement help</h3><br>'+
                 '<strong>Available Options:</strong><br>'+
                 '--start <i>// Begins tracking token movement.</i><br>'+
                 '--pause <i>// Disables the script temporarily.</i><br>'+
                 '--toggle <i>// Toggles the current state.</i><br>'+
+                '--toggle auto-reset <i>// Controls whether the script will stop after the initiative window is closed.</i><br>'+
                 '--reset <i>// Resets all tracking (Use after a fight)</i><br>'+
                 '--stop <i>// Completely clears all tracked data and stops the script</i><br>'+
-                '<br>The script is currently <b>' + currentState + '</b>, and will automatically stop when the turn order window is closed.'+
+                '<br>The script is currently <b>'+
+                currentState+
+                '</b>, and will'+
+                currentAutoResetState+
+                'when the turn order window is closed.'+
                 Chat_Formatting_END;
         printToChat(msg, helpContent);
     };
@@ -224,7 +273,7 @@ var CombatMovement = CombatMovement || (function(){
            || (obj.get('represents') == '')
             ) { return; }
 
-        if(TrackingArray.turnorder[obj.id][0] <= 0) {
+        if(turnorder[obj.id][0] <= 0) {
             obj.set({left: prev.left, top: prev.top, rotation: prev.rotation});
         }
 
@@ -256,10 +305,10 @@ var CombatMovement = CombatMovement || (function(){
         }
 
         // Can we move this distance? If no, stop.
-        if(TrackingArray.turnorder[obj.id][0] < totalmovement) {
+        if(turnorder[obj.id][0] < totalmovement) {
             obj.set({left: prev.left, top: prev.top, rotation: prev.rotation});
         } else {
-            TrackingArray.turnorder[obj.id][0] = TrackingArray.turnorder[obj.id][0] - totalmovement;
+            turnorder[obj.id][0] = turnorder[obj.id][0] - totalmovement;
         }
     },
 
