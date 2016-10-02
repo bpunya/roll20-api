@@ -56,9 +56,10 @@ var CombatMovement = CombatMovement || (function(){
         var currentTokenID = JSON.parse(Campaign().get('turnorder'))[0]['id'];
         if(currentTokenID == TrackingArray.initialtoken) {
             for(var token in TrackingArray.turnorder) {
-                TrackingArray.turnorder[token][0] = TrackingArray.turnorder[token][1];
+                TrackingArray.turnorder[token][0] = 0;
             }
         }
+        TrackingArray.turnorder[currentTokenID][0] = TrackingArray.turnorder[currentTokenID][1];
     },
 
     changeOptions = function(msg, option) {
@@ -129,10 +130,15 @@ var CombatMovement = CombatMovement || (function(){
             if(characterID) {
                 movement = parseInt(getAttrByName(characterID, 'speed'), 10);
                 if(!isNaN(movement)) {
-                    TrackingArray.turnorder[tokenID] = [movement, movement];
+                    if(tokenID == TrackingArray.initialtoken) {
+                        TrackingArray.turnorder[tokenID] = [movement, movement];
+                    } else {
+                        TrackingArray.turnorder[tokenID] = [0, movement];
+                    }
                 }
             }
         }
+        // Now set the starting character's movement properly.
     },
 
     handleChatInput = function(msg) {
