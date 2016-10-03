@@ -34,6 +34,7 @@ var CombatMovement = CombatMovement || (function(){
     turnorder = {},
     turncounter = 1,
     initialtoken = false,
+    toGM = {'who':'gm'}
 
     Chat_Formatting_START = '<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">'+
                             '<div style="border-width:2px; border-style:dotted; padding:5px">',
@@ -46,14 +47,14 @@ var CombatMovement = CombatMovement || (function(){
     checkVersion = function() {
         if(!state.CombatMovement) { state.CombatMovement = {'active':false, 'autoreset':true}; }
         s = state.CombatMovement;
-        if(!Campaign().get('initiativepage')) {
+        if(!Campaign().get('initiativepage') && s.autoreset) {
             log('Resetting Combat Movement data...')
             clearData();
         }
         log('-- Combat Movement v'+version+' -- ['+(new Date(lastUpdate*1000))+']');
     },
 
-    // When the turnorder page closes, call this function and clear data.
+    // When the turnorder page closes, call this function.
     checkCombatStatus = function() {
         if(!Campaign().get('initiativepage') && s.autoreset) {
             clearData();
@@ -64,13 +65,15 @@ var CombatMovement = CombatMovement || (function(){
     checkCurrentRound = function() {
         if(!s.active) { return; }
         var currentTokenID = JSON.parse(Campaign().get('turnorder'))[0]['id'];
+        // Is it the top of the round yet? If yes...
         if(currentTokenID == initialtoken) {
             for(var token in turnorder) {
                 turnorder[token][0] = 0;
             }
             turncounter++;
-            printToChat({'who':'gm'}, `Round ${turncounter} has started.`)
+            printToChat(toGM, `Round ${turncounter} has started.`)
         }
+        // Give the current token its movement for the turn...
         if(turnorder.hasOwnProperty(currentTokenID)) {
             turnorder[currentTokenID][0] = turnorder[currentTokenID][1];
         }
@@ -136,10 +139,10 @@ var CombatMovement = CombatMovement || (function(){
     };
 
     freezeTurnOrder = function() {
-        var tokenID, characterID, movement,
+        var tokenID, characterID, character, movement,
         current_turn_order = JSON.parse(Campaign().get('turnorder'));
         if(current_turn_order == '') {
-            printToChat({'who':'gm'}, "You haven't rolled initiative yet!");
+            printToChat(toGM, "You haven't rolled initiative yet!");
             return 'failed';
         }
 
@@ -149,11 +152,9 @@ var CombatMovement = CombatMovement || (function(){
         // Set turnorder and movements
         for(i = 0; i < current_turn_order.length; i++) {
             tokenID = current_turn_order[i]['id'];
-            characterID = getObj('graphic', tokenID).get('represents');
-            character = getObj('character', characterID)
-            if(characterID == undefined || character == undefined) { continue; }
-            if(getObj('character', characterID).get('controlledby') == ''
-                ) { continue; }
+            characterObj = getObj('character', getObj('graphic', tokenID).get('represents'));
+            if(characterObj == undefined) { continue; }
+            if(characterObj.get('controlledby') == '') { continue; }
             else {
                 movement = parseInt(getAttrByName(characterID, movementattribute), 10) || 0;
                 if(!isNaN(movement)) {
@@ -165,9 +166,9 @@ var CombatMovement = CombatMovement || (function(){
                 }
             }
         }
-        if(_.keys(turnorder).length == 0) { 
+        if(_.keys(turnorder).length == 0) {
             printToChat({'who':'gm'}, 'No player tokens were found.');
-            return 'failed'; 
+            return 'failed';
         }
     },
 
@@ -303,10 +304,9 @@ var CombatMovement = CombatMovement || (function(){
 
     handleTokenMovement = function(obj, prev) {
         if( !s.active
-           || (!Campaign().get('initiativepage'))
-           || JSON.parse(Campaign().get('turnorder')).length == 1
-           || (obj.get('represents') == '')
-           || !turnorder.hasOwnProperty(obj.id)
+            || !turnorder.hasOwnProperty(obj.id)
+            || !Campaign().get('initiativepage')
+            || JSON.parse(Campaign().get('turnorder')).length == 1
             ) { return; }
 
         if(turnorder[obj.id][0] <= 0) {
@@ -319,12 +319,10 @@ var CombatMovement = CombatMovement || (function(){
         currentPageDiagonalType = currentPage.get('diagonaltype'),
         currentPageScale = currentPage.get('scale_number'),
         currentPageGridSize = currentPage.get('snapping_increment'),
-        currentPageGridType = currentPage.get('grid_type');
         totaldistance = 0;
 
         // If the page is weird, just don't bother
-        if( !(currentPageGridType == 'square')
-            ) { return; }
+        if(currentPage.get('grid_type') != 'square') { return; }
 
         // Get movement coordinates and check if it was a simple move or waypoint
         rawlastmove = obj.get('lastmove').split(',')
@@ -334,19 +332,21 @@ var CombatMovement = CombatMovement || (function(){
         oddintcoords = _.map(oddstrcoords, function(value) { return parseInt(value) });
         lastmove = _.zip(evenintcoords, oddintcoords);
 
-        // We have movement coordinates, now to check if the player moved simply or used waypoints.
-        lastcoords = _.last(lastmove);
-        if(obj.get('left') != lastcoords[0] || obj.get('top') != lastcoords[1]) {
-            movementX = Math.abs(obj.get('left') - lastcoords[0])*currentPageScale*currentPageGridSize/70;
-            movementY = Math.abs(obj.get('top') - lastcoords[1])*currentPageScale*currentPageGridSize/70;
-            totaldistance += determineDistanceMoved(movementX, movementY, currentPageDiagonalType, currentPageScale);
-        }
         //FOR EACH JUMP, CALCULATE DISTANCE AND ADD IT TO A TOTAL.
         for(i=0; i + 1 < lastmove.length; i++) {
             movementX = Math.abs(lastmove[i][0] - lastmove[i+1][0])*currentPageScale*currentPageGridSize/70;
             movementY = Math.abs(lastmove[i][1] - lastmove[i+1][1])*currentPageScale*currentPageGridSize/70;
             totaldistance += determineDistanceMoved(movementX, movementY, currentPageDiagonalType, currentPageScale);
         }
+
+        // Did the player actually end at their last waypoint? If not, calculate ending movement.
+        lastcoords = _.last(lastmove);
+        if(obj.get('left') != lastcoords[0] || obj.get('top') != lastcoords[1]) {
+            movementX = Math.abs(obj.get('left') - lastcoords[0])*currentPageScale*currentPageGridSize/70;
+            movementY = Math.abs(obj.get('top') - lastcoords[1])*currentPageScale*currentPageGridSize/70;
+            totaldistance += determineDistanceMoved(movementX, movementY, currentPageDiagonalType, currentPageScale);
+        }
+
         // Can we move this distance? If no, stop.
         if(turnorder[obj.id][0] < totaldistance) {
             obj.set({left: prev.left, top: prev.top, rotation: prev.rotation});
