@@ -80,7 +80,7 @@ var CombatMovement = CombatMovement || (function(){
         var actionTaken = false;
         switch(option) {
             case 'start':
-            if(!s.active && Campaign().get('initiativepage') && !(initialtoken == false) ) {
+            if(!s.active && !(initialtoken == false) && _.keys(turnorder).length > 0 ) {
                 s.active = true;
                 actionTaken = 'is now ACTIVE';
             } else {
@@ -138,35 +138,34 @@ var CombatMovement = CombatMovement || (function(){
     freezeTurnOrder = function() {
         var tokenID, characterID, movement,
         current_turn_order = JSON.parse(Campaign().get('turnorder'));
-        if(current_turn_order.length < 1) {
+        if(current_turn_order == '') {
             printToChat({'who':'gm'}, "You haven't rolled initiative yet!");
             return 'failed';
         }
+
         // initialtoken will be used to determine if a turn has passed.
         initialtoken = current_turn_order[0]['id'];
-        var success = false;
 
         // Set turnorder and movements
         for(i = 0; i < current_turn_order.length; i++) {
             tokenID = current_turn_order[i]['id'];
-            characterID = getObj('graphic', tokenID).get('represents') || false;
-            if( characterID
-                && !(getObj('character', characterID).get('represents') == '')
-                && !(getObj('character', characterID).get('controlledby') == '')
-                ) {
+            characterID = getObj('graphic', tokenID).get('represents');
+            character = getObj('character', characterID)
+            if(characterID == undefined || character == undefined) { continue; }
+            if(getObj('character', characterID).get('controlledby') == ''
+                ) { continue; }
+            else {
                 movement = parseInt(getAttrByName(characterID, movementattribute), 10) || 0;
                 if(!isNaN(movement)) {
                     if(tokenID == initialtoken) {
                         turnorder[tokenID] = [movement, movement];
-                        success = true;
                     } else {
                         turnorder[tokenID] = [0, movement];
-                        success = true;
                     }
                 }
             }
         }
-        if(!success) { 
+        if(_.keys(turnorder).length == 0) { 
             printToChat({'who':'gm'}, 'No player tokens were found.');
             return 'failed'; 
         }
