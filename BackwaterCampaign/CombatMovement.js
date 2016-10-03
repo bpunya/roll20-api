@@ -171,10 +171,11 @@ var CombatMovement = CombatMovement || (function(){
             case '!CombatMovement':
             case '!CM':
 
+                // If something is selected, give it extra movement
                 if(msg.selected) {
                     if(!s.active) {
                         printToChat(msg, 'Please deselect all tokens and '+
-                        'start the script before attempting to add dash movement');
+                        'start the script before attempting to add extra movement');
                         return;
                     }
                     var selectedtokenID,
@@ -239,7 +240,7 @@ var CombatMovement = CombatMovement || (function(){
                             case 'clear':
                             state.CombatMovement = {'active':false, 'autoreset':true};
                             turnorder = {};
-                            initialtoken = {};
+                            initialtoken = false;
                             break;
                         }
                     break;
@@ -277,7 +278,7 @@ var CombatMovement = CombatMovement || (function(){
                 '<b>toggle auto-reset</b><br>'+
                 '<i>// Controls whether the script will stop after the initiative window is closed.</i><br>'+
                 '<b>reset</b><br>'+
-                '<i>// Resets all tracking (Use after a fight)</i><br>'+
+                '<i>// Changes the character considered the top of the initiative order to the current one.</i><br>'+
                 '<b>stop</b><br>'+
                 '<i>// Completely clears all tracked data and stops the script</i><br><br>'+
                 'The script is currently <b><span style="color: #FFFFFF; background-color:'+
@@ -318,13 +319,9 @@ var CombatMovement = CombatMovement || (function(){
         // Get movement coordinates and check if it was a simple move or waypoint
         rawlastmove = obj.get('lastmove').split(',')
         evenstrcoords = rawlastmove.filter(function(value, index) { return parseInt(index) % 2 == 0; });
-        evenintcoords = _.map(evenstrcoords, function(value) {
-                        return parseInt(value)
-                        });
+        evenintcoords = _.map(evenstrcoords, function(value) { return parseInt(value) });
         oddstrcoords = rawlastmove.filter(function(value, index) { return parseInt(index) % 2 == 1; });
-        oddintcoords = _.map(oddstrcoords, function(value) {
-                        return parseInt(value)
-                        });
+        oddintcoords = _.map(oddstrcoords, function(value) { return parseInt(value) });
         lastmove = _.zip(evenintcoords, oddintcoords);
 
         // We have movement coordinates, now to check if the player moved simply or used waypoints.
