@@ -26,7 +26,7 @@ var CombatMovement = CombatMovement || (function(){
 
     var
     version = '1.0',
-    lastUpdate = 1475470442,
+    lastUpdate = 1475531908,
 
     // Update the following line to your character sheet attribute for movement speed
     movementattribute = 'speed',
@@ -63,7 +63,7 @@ var CombatMovement = CombatMovement || (function(){
 
     // Call this when we advance the turn order.
     checkCurrentRound = function() {
-        if(!s.active) { return; }
+        if(!s.active || Campaign().get('turnorder') == '') { return; }
         var currentTokenID = JSON.parse(Campaign().get('turnorder'))[0]['id'];
         // Is it the top of the round yet? If yes...
         if(currentTokenID == initialtoken) {
@@ -263,8 +263,8 @@ var CombatMovement = CombatMovement || (function(){
 
     printToChat = function(msg, content) {
         sendChat('Combat Movement', `/w ${msg.who} <br>`+
-                content
-                );
+                content,
+                null, {noarchive:true} );
     },
 
     showHelp = function(msg) {
@@ -361,6 +361,7 @@ var CombatMovement = CombatMovement || (function(){
         else if(diagonaltype == 'threefive')   { distanceMoved = getThreeFiveDistance(x, y, scale); }
         else if(diagonaltype == 'pythagorean') { distanceMoved = getEuclideanDistance(x, y, scale); }
         else if(diagonaltype == 'manhattan')   { distanceMoved = getManhattanDistance(x, y, scale); }
+        else { distanceMoved = get4eDistance(x, y, scale); }
         return distanceMoved;
     },
 
