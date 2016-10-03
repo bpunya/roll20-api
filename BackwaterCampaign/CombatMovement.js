@@ -297,6 +297,7 @@ var CombatMovement = CombatMovement || (function(){
         if( !s.active
            || (!Campaign().get('initiativepage'))
            || (obj.get('represents') == '')
+           || !turnorder.hasOwnProperty(obj.id)
             ) { return; }
 
         if(turnorder[obj.id][0] <= 0) {
