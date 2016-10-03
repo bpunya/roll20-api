@@ -85,7 +85,7 @@ var CombatMovement = CombatMovement || (function(){
                 actionTaken = 'is now ACTIVE';
             } else {
                 s.active = true;
-                freezeTurnOrder();
+                if(freezeTurnOrder() == 'failed') { return; }
                 actionTaken = `is now ACTIVE. Round ${turncounter} has begun.`;
             }
             break;
@@ -113,7 +113,7 @@ var CombatMovement = CombatMovement || (function(){
             case 'reset':
             if(!(initialtoken == false)) {
                 initialtoken = false;
-                freezeTurnOrder();
+                if(freezeTurnOrder() == 'failed') { return; }
                 actionTaken = 'has reset the stored turnorder'
             }
             break;
@@ -141,7 +141,7 @@ var CombatMovement = CombatMovement || (function(){
         current_turn_order = JSON.parse(Campaign().get('turnorder'));
         if(current_turn_order.length < 1) {
             printToChat({'who':'gm'}, "You haven't rolled initiative yet!")
-            return;
+            return 'failed';
         }
         // initialtoken will be used to determine if a turn has passed.
         initialtoken = current_turn_order[0]['id']
@@ -296,6 +296,7 @@ var CombatMovement = CombatMovement || (function(){
     handleTokenMovement = function(obj, prev) {
         if( !s.active
            || (!Campaign().get('initiativepage'))
+           || JSON.parse(Campaign().get('turnorder')).length == 1
            || (obj.get('represents') == '')
            || !turnorder.hasOwnProperty(obj.id)
             ) { return; }
