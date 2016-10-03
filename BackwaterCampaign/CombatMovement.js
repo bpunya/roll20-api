@@ -112,7 +112,6 @@ var CombatMovement = CombatMovement || (function(){
 
             case 'reset':
             if(!(initialtoken == false)) {
-                initialtoken = false;
                 if(freezeTurnOrder() == 'failed') { return; }
                 actionTaken = 'has reset the stored turnorder'
             }
