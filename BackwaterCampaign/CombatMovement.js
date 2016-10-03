@@ -84,8 +84,8 @@ var CombatMovement = CombatMovement || (function(){
                 s.active = true;
                 actionTaken = 'is now ACTIVE';
             } else {
-                s.active = true;
                 if(freezeTurnOrder() == 'failed') { return; }
+                s.active = true;
                 actionTaken = `is now ACTIVE. Round ${turncounter} has begun.`;
             }
             break;
@@ -139,26 +139,36 @@ var CombatMovement = CombatMovement || (function(){
         var tokenID, characterID, movement,
         current_turn_order = JSON.parse(Campaign().get('turnorder'));
         if(current_turn_order.length < 1) {
-            printToChat({'who':'gm'}, "You haven't rolled initiative yet!")
+            printToChat({'who':'gm'}, "You haven't rolled initiative yet!");
             return 'failed';
         }
         // initialtoken will be used to determine if a turn has passed.
-        initialtoken = current_turn_order[0]['id']
+        initialtoken = current_turn_order[0]['id'];
+        var success = false;
 
         // Set turnorder and movements
         for(i = 0; i < current_turn_order.length; i++) {
             tokenID = current_turn_order[i]['id'];
             characterID = getObj('graphic', tokenID).get('represents') || false;
-            if( characterID && !(getObj('character', characterID).get('represents') == '') ) {
+            if( characterID
+                && !(getObj('character', characterID).get('represents') == '')
+                && !(getObj('character', characterID).get('controlledby') == '')
+                ) {
                 movement = parseInt(getAttrByName(characterID, movementattribute), 10) || 0;
                 if(!isNaN(movement)) {
                     if(tokenID == initialtoken) {
                         turnorder[tokenID] = [movement, movement];
+                        success = true;
                     } else {
                         turnorder[tokenID] = [0, movement];
+                        success = true;
                     }
                 }
             }
+        }
+        if(!success) { 
+            printToChat({'who':'gm'}, 'No player tokens were found.');
+            return 'failed'; 
         }
     },
 
