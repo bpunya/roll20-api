@@ -6,7 +6,7 @@ var CharacterCount = CharacterCount || (function(){
     // For the Backwater Living Campaign
     var
     currentversion = '1.0',
-    lastUpdate = 1474603698,
+    lastUpdate = 1475552233,
 
     alignmentdictionary = {},
     racedictionary = {},
@@ -256,8 +256,8 @@ var CharacterCount = CharacterCount || (function(){
             +'<strong>Class(es)</strong> ---- <br>Counts the combined total of all class levels.<br>'
             +'<strong>Level(s)</strong> ---- <br>Counts the amount of players at each level.<br>'
             +'<strong>Race(s)</strong> ---- <br>Counts all listed player races. Races unable to be parsed are listed in a seperate line.<br>'
-            +'</p></div>'
-        );
+            +'</p></div>',
+            null, {noarchive:true});
     }
 
     printOutput = function(totals, outputtype, msg){
@@ -276,7 +276,7 @@ var CharacterCount = CharacterCount || (function(){
         })
         rawOutput.push('<em>Generated on '+new Date(Date.now())+'</em></div>'); //ending formatting goes here
         formattedOutput = rawOutput.join('');
-        sendChat("CC", formattedOutput);
+        sendChat("CC", formattedOutput, null, {noarchive:true});
     }
 
     registerEventHandlers = function(){
