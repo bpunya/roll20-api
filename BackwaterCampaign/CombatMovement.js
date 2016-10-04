@@ -26,7 +26,7 @@ var CombatMovement = CombatMovement || (function(){
 
     var
     version = '1.0',
-    lastUpdate = 1475531908,
+    lastUpdate = 1475470442,
 
     // Update the following line to your character sheet attribute for movement speed
     movementattribute = 'speed',
@@ -45,7 +45,7 @@ var CombatMovement = CombatMovement || (function(){
 /******************************************************************************/
 
     checkVersion = function() {
-        if(!state.CombatMovement) { state.CombatMovement = {'active':false, 'autoreset':true}; }
+        if(!state.CombatMovement) { state.CombatMovement = {'active':false, 'autoreset':true, 'ignoreGMmovement':true}; }
         s = state.CombatMovement;
         if(!Campaign().get('initiativepage') && s.autoreset) {
             log('Resetting Combat Movement data...')
@@ -70,7 +70,7 @@ var CombatMovement = CombatMovement || (function(){
             for(var token in turnorder) {
                 turnorder[token][0] = 0;
             }
-            turncounter++;
+            turncounter += 1;
             printToChat(toGM, `Round ${turncounter} has started.`)
         }
         // Give the current token its movement for the turn...
@@ -86,7 +86,7 @@ var CombatMovement = CombatMovement || (function(){
             if(!s.active && !(initialtoken == false) && _.keys(turnorder).length > 0 ) {
                 s.active = true;
                 actionTaken = 'is now ACTIVE';
-            } else {
+            } else if(!s.active) {
                 if(freezeTurnOrder() == 'failed') { return; }
                 s.active = true;
                 actionTaken = `is now ACTIVE. Round ${turncounter} has begun.`;
@@ -111,6 +111,12 @@ var CombatMovement = CombatMovement || (function(){
             s.autoreset = !s.autoreset;
             actionTaken = s.autoreset ? 'automatically stops when the initiative window is closed'
                                       : 'continues running when the initiative window is closed';
+            break;
+
+            case 'gm-movement':
+            s.ignoreGMmovement = !s.ignoreGMmovement;
+            actionTaken = s.ignoreGMmovement ? 'grants NPCs free movement'
+                                             : 'treats NPCs the same as PCs'
             break;
 
             case 'reset':
@@ -152,9 +158,18 @@ var CombatMovement = CombatMovement || (function(){
         // Set turnorder and movements
         for(i = 0; i < current_turn_order.length; i++) {
             tokenID = current_turn_order[i]['id'];
-            characterObj = getObj('character', getObj('graphic', tokenID).get('represents'));
-            if(characterObj == undefined) { continue; }
-            if(characterObj.get('controlledby') == '') { continue; }
+
+            // Just in case something weird happens
+            if(getObj('graphic', tokenID) == undefined) {
+                printToChat(toGM, "You need to clear the turn list using the initiative window.")
+                continue;
+            }
+
+            // Check to see if we should ignore some tokens
+            characterID = getObj('graphic', tokenID).get('represents');
+            if(characterID == '') { continue; }
+            playerID = getObj('character', characterID).get('controlledby');
+            if(playerID == '' && s.ignoreGMmovement) { continue; }
             else {
                 movement = parseInt(getAttrByName(characterID, movementattribute), 10) || 0;
                 if(!isNaN(movement)) {
@@ -181,7 +196,7 @@ var CombatMovement = CombatMovement || (function(){
             case '!CM':
 
                 // If something is selected, give it extra movement
-                if(msg.selected) {
+                if(msg.selected && args.length == 1) {
                     if(!s.active) {
                         printToChat(msg, 'Please deselect all tokens and '+
                         'start the script before attempting to add extra movement');
@@ -216,6 +231,10 @@ var CombatMovement = CombatMovement || (function(){
                         switch(args[2]) {
                             case 'auto-reset':
                             changeOptions(msg, 'auto-reset');
+                            break;
+
+                            case 'gm-movement':
+                            changeOptions(msg, 'gm-movement')
                             break;
 
                             default:
@@ -271,7 +290,8 @@ var CombatMovement = CombatMovement || (function(){
         var
         currentState = s.active ? 'RUNNING' : 'OFFLINE',
         currentStateColour = s.active ? '#57961B' : '#991616',
-        currentAutoResetState = s.autoreset ? ' automatically stop ' : ' continue to run ',
+        currentAutoResetState = s.autoreset ? ' automatically stops ' : ' continues to run ',
+        currentGMmovementState = s.ignoreGMmovement ? ' grants NPCs unlimited movement.' : ' treats NPCs like PCs.'
         helpContent = Chat_Formatting_START+
                 '<div style="background-color: #282828;">'+
                 '<h3 style="color: #FFFFFF; text-align: center;">Combat Movement help</h3><br></div>'+
@@ -285,7 +305,9 @@ var CombatMovement = CombatMovement || (function(){
                 '<b>toggle</b><br>'+
                 '<i>// Toggles the current state.</i><br>'+
                 '<b>toggle auto-reset</b><br>'+
-                '<i>// Controls whether the script will stop after the initiative window is closed.</i><br>'+
+                '<i>// Controls whether the script will stop after the initiative window is closed (defaults to stop).</i><br>'+
+                '<b>toggle gm-movement</b><br>'+
+                '<i>// Controls whether NPCs should be granted free movement or treated like PCs (defaults to free movement).</i><br>'+
                 '<b>reset</b><br>'+
                 '<i>// Changes the character considered the top of the initiative order to the current one.</i><br>'+
                 '<b>stop</b><br>'+
@@ -294,9 +316,10 @@ var CombatMovement = CombatMovement || (function(){
                 currentStateColour+
                 '">'+
                 currentState+
-                '</b></span>, and will'+
+                '</b></span>,'+
                 currentAutoResetState+
-                'when the turn order window is closed.'+
+                'when the turn order window is closed, and'+
+                currentGMmovementState+
                 '</div>'+
                 Chat_Formatting_END;
         printToChat(msg, helpContent);
