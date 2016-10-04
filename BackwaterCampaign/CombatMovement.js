@@ -101,7 +101,7 @@ var CombatMovement = CombatMovement || (function(){
             break;
 
             case 'toggle':
-            if(Campaign().get('initiativepage')) {
+            if(Campaign().get('initiativepage') && _.keys(turnorder).length > 0) {
                 s.active = !s.active;
                 actionTaken = s.active ? 'is now ACTIVE' : 'has been paused';
             }
