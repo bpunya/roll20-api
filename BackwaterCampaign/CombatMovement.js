@@ -26,7 +26,7 @@ var CombatMovement = CombatMovement || (function(){
 
     var
     version = '1.0',
-    lastUpdate = 1475470442,
+    lastUpdate = 1475645791,
 
     // Update the following line to your character sheet attribute for movement speed
     movementattribute = 'speed',
@@ -73,7 +73,7 @@ var CombatMovement = CombatMovement || (function(){
             turncounter += 1;
             printToChat(toGM, `Round ${turncounter} has started.`)
         }
-        // Give the current token its movement for the turn...
+        // Either way, give the current token its movement for the turn...
         if(turnorder.hasOwnProperty(currentTokenID)) {
             turnorder[currentTokenID][0] = turnorder[currentTokenID][1];
         }
@@ -155,34 +155,36 @@ var CombatMovement = CombatMovement || (function(){
         // initialtoken will be used to determine if a turn has passed.
         initialtoken = current_turn_order[0]['id'];
 
-        // Set turnorder and movements
+        // Main loop to add tokenIDs to the turnorder object ==>
         for(i = 0; i < current_turn_order.length; i++) {
             tokenID = current_turn_order[i]['id'];
 
-            // Just in case something weird happens
+            // Ignore all invalid tokens
             if(getObj('graphic', tokenID) == undefined) {
-                printToChat(toGM, "You need to clear the turn list using the initiative window.")
+                printToChat(toGM, "You need to clear the turn list using the initiative window.");
                 continue;
             }
-
-            // Check to see if we should ignore some tokens
             characterID = getObj('graphic', tokenID).get('represents');
             if(characterID == '') { continue; }
             playerID = getObj('character', characterID).get('controlledby');
             if(playerID == '' && s.ignoreGMmovement) { continue; }
-            else {
-                movement = parseInt(getAttrByName(characterID, movementattribute), 10) || 0;
-                if(!isNaN(movement)) {
-                    if(tokenID == initialtoken) {
-                        turnorder[tokenID] = [movement, movement];
-                    } else {
-                        turnorder[tokenID] = [0, movement];
-                    }
+
+            // All good? Go ahead...
+            movement = parseInt(getAttrByName(characterID, movementattribute), 10);
+            if(!isNaN(movement)) {
+                if(tokenID == initialtoken) {
+                    turnorder[tokenID] = [movement, movement];
+                } else {
+                    turnorder[tokenID] = [0, movement];
                 }
+            // Unless something is formatted improperly...
+            } else {
+                characterName = getObj('character', characterID).get('name');
+                printToChat(toGM, `${characterName} has an incorrect formatted movement speed.`);
             }
-        }
+        } // End Main loop <==
         if(_.keys(turnorder).length == 0) {
-            printToChat({'who':'gm'}, 'No player tokens were found.');
+            printToChat(toGM, 'No player tokens were found.');
             return 'failed';
         }
     },
@@ -256,7 +258,6 @@ var CombatMovement = CombatMovement || (function(){
                     break;
 
                     case 'debug':
-
                         switch(args[2]) {
                             case 'log':
                             log(`Combat Movement v${version}`)
@@ -347,7 +348,7 @@ var CombatMovement = CombatMovement || (function(){
         // If the page is weird, just don't bother
         if(currentPage.get('grid_type') != 'square') { return; }
 
-        // Get movement coordinates and check if it was a simple move or waypoint
+        // Get movement coordinates and split em into an actually nice array
         rawlastmove = obj.get('lastmove').split(',')
         evenstrcoords = rawlastmove.filter(function(value, index) { return parseInt(index) % 2 == 0; });
         evenintcoords = _.map(evenstrcoords, function(value) { return parseInt(value) });
@@ -387,7 +388,6 @@ var CombatMovement = CombatMovement || (function(){
         else { distanceMoved = get4eDistance(x, y, scale); }
         return distanceMoved;
     },
-
     get4eDistance = function(x, y, scale) {
         var totalmovement = x > y ? x : y;
         return totalmovement;
