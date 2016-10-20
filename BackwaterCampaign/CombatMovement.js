@@ -25,16 +25,14 @@ var CombatMovement = CombatMovement || (function(){
     */
 
     var
-    version = '1.0',
-    lastUpdate = 1475645791,
+    version = '1.1',
+    lastUpdate = 1476996144,
 
     // Update the following line to your character sheet attribute for movement speed
     movementattribute = 'speed',
 
-    turnorder = {},
-    turncounter = 1,
-    initialtoken = false,
-    toGM = {'who':'gm'}
+    toGM = {'who':'gm'},
+    defaultState = {'active': false, 'autoreset': true, 'ignoreGMmovement': true, 'turnorder': {}, 'turncounter': 1, 'initialtoken': false},
 
     Chat_Formatting_START = '<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">'+
                             '<div style="border-width:2px; border-style:dotted; padding:5px">',
@@ -42,11 +40,12 @@ var CombatMovement = CombatMovement || (function(){
     Chat_Formatting_END = '</div>'+
                           '</div>';
 
+    if(!state.CombatMovement) { state.CombatMovement = defaultState; }
+    s = state.CombatMovement;
+
 /******************************************************************************/
 
     checkVersion = function() {
-        if(!state.CombatMovement) { state.CombatMovement = {'active':false, 'autoreset':true, 'ignoreGMmovement':true}; }
-        s = state.CombatMovement;
         if(!Campaign().get('initiativepage') && s.autoreset) {
             log('Resetting Combat Movement data...')
             clearData();
@@ -66,16 +65,16 @@ var CombatMovement = CombatMovement || (function(){
         if(!s.active || Campaign().get('turnorder') == '') { return; }
         var currentTokenID = JSON.parse(Campaign().get('turnorder'))[0]['id'];
         // Is it the top of the round yet? If yes...
-        if(currentTokenID == initialtoken) {
-            for(var token in turnorder) {
-                turnorder[token][0] = 0;
+        if(currentTokenID == s.initialtoken) {
+            for(var token in s.turnorder) {
+                s.turnorder[token][0] = 0;
             }
-            turncounter += 1;
-            printToChat(toGM, `Round ${turncounter} has started.`)
+            s.turncounter += 1;
+            printToChat(toGM, `Round ${s.turncounter} has started.`)
         }
         // Either way, give the current token its movement for the turn...
-        if(turnorder.hasOwnProperty(currentTokenID)) {
-            turnorder[currentTokenID][0] = turnorder[currentTokenID][1];
+        if(s.turnorder.hasOwnProperty(currentTokenID)) {
+            s.turnorder[currentTokenID][0] = s.turnorder[currentTokenID][1];
         }
     },
 
@@ -83,13 +82,13 @@ var CombatMovement = CombatMovement || (function(){
         var actionTaken = false;
         switch(option) {
             case 'start':
-            if(!s.active && !(initialtoken == false) && _.keys(turnorder).length > 0 ) {
+            if(!s.active && !(s.initialtoken == false) && _.keys(s.turnorder).length > 0 ) {
                 s.active = true;
                 actionTaken = 'is now ACTIVE';
             } else if(!s.active) {
                 if(freezeTurnOrder() == 'failed') { return; }
                 s.active = true;
-                actionTaken = `is now ACTIVE. Round ${turncounter} has begun.`;
+                actionTaken = `is now ACTIVE. Round ${s.turncounter} has begun.`;
             }
             break;
 
@@ -101,7 +100,7 @@ var CombatMovement = CombatMovement || (function(){
             break;
 
             case 'toggle':
-            if(Campaign().get('initiativepage') && _.keys(turnorder).length > 0) {
+            if(Campaign().get('initiativepage') && _.keys(s.turnorder).length > 0) {
                 s.active = !s.active;
                 actionTaken = s.active ? 'is now ACTIVE' : 'has been paused';
             }
@@ -120,7 +119,7 @@ var CombatMovement = CombatMovement || (function(){
             break;
 
             case 'reset':
-            if(!(initialtoken == false)) {
+            if(!(s.initialtoken == false)) {
                 if(freezeTurnOrder() == 'failed') { return; }
                 actionTaken = 'has reset the stored turnorder'
             }
@@ -139,9 +138,9 @@ var CombatMovement = CombatMovement || (function(){
 
     clearData = function() {
         s.active = false;
-        turnorder = {};
-        initialtoken = false;
-        turncounter = 1;
+        s.turnorder = {};
+        s.initialtoken = false;
+        s.turncounter = 1;
     };
 
     freezeTurnOrder = function() {
@@ -153,7 +152,7 @@ var CombatMovement = CombatMovement || (function(){
         }
 
         // initialtoken will be used to determine if a turn has passed.
-        initialtoken = current_turn_order[0]['id'];
+        s.initialtoken = current_turn_order[0]['id'];
 
         // Main loop to add tokenIDs to the turnorder object ==>
         for(i = 0; i < current_turn_order.length; i++) {
@@ -172,18 +171,18 @@ var CombatMovement = CombatMovement || (function(){
             // All good? Go ahead...
             movement = parseInt(getAttrByName(characterID, movementattribute), 10);
             if(!isNaN(movement)) {
-                if(tokenID == initialtoken) {
-                    turnorder[tokenID] = [movement, movement];
+                if(tokenID == s.initialtoken) {
+                    s.turnorder[tokenID] = [movement, movement];
                 } else {
-                    turnorder[tokenID] = [0, movement];
+                    s.turnorder[tokenID] = [0, movement];
                 }
             // Unless something is formatted improperly...
             } else {
                 characterName = getObj('character', characterID).get('name');
-                printToChat(toGM, `${characterName} has an incorrect formatted movement speed.`);
+                printToChat(toGM, `${characterName} has an incorrectly formatted movement speed.`);
             }
         } // End Main loop <==
-        if(_.keys(turnorder).length == 0) {
+        if(_.keys(s.turnorder).length == 0) {
             printToChat(toGM, 'No player tokens were found.');
             return 'failed';
         }
@@ -197,49 +196,15 @@ var CombatMovement = CombatMovement || (function(){
             case '!CombatMovement':
             case '!CM':
 
-                // If something is selected, check if there a number in args.
-                // If there is a number, we want to manipulate that character's
-                // movement speed instead of adding more to the counter.
-                if(msg.selected) {
-                    var actionTaken = false;
-                    if(args.length !== 1 && Number.isInteger(args[1])) {
-                        actionTaken = 'changed the movements of';
-                    } else if(args.length === 1) {
-                        actionTaken = 'given extra dash movement to';
-                    } else {
-                        return;
-                    };
-                    if(!s.active) {
-                        printToChat(msg, 'Please start the script first!');
-                        return;
-                    }
-                    var selectedtokenID,
-                    selectedtokenNameArray = [];
-
-                    for(i=0; i < msg.selected.length; i++) {
-                        selectedtokenID = msg.selected[i]._id;
-                        if(actionTaken == 'given extra dash movement to') {
-                            if(turnorder.hasOwnProperty(selectedtokenID)) {
-                                turnorder[selectedtokenID][0] += turnorder[selectedtokenID][1];
-                                selectedtokenNameArray.push(getObj('graphic', selectedtokenID).get('name'));
-                            }
-                        } else if(actiontaken == 'changed the movements of') {
-                            // going to need a function here to add or subtract from the character's movements
-                            // also need to figure out if a character is attached. should make a function for that.
-                        }
-                    }
-                    output = `You have ${actionTaken} ${selectedtokenNameArray.join(', ')}`;
-                    printToChat(msg, output);
-                    return;
-                }
-
                 switch(args[1]) {
                     case 'start':
                     changeOptions(msg, 'start')
+                    return;
                     break;
 
                     case 'pause':
                     changeOptions(msg, 'pause')
+                    return;
                     break;
 
                     case 'toggle':
@@ -257,42 +222,115 @@ var CombatMovement = CombatMovement || (function(){
                             changeOptions(msg, 'toggle');
                             break;
                         }
+                    return;
                     break;
 
                     case 'stop':
                     changeOptions(msg, 'stop');
+                    return;
                     break;
 
                     case 'reset':
                     changeOptions(msg, 'reset')
+                    return;
                     break;
 
                     case 'help':
                     showHelp(msg)
+                    return;
                     break;
 
                     case 'debug':
+
                         switch(args[2]) {
                             case 'log':
                             log(`Combat Movement v${version}`)
-                            log(`Is the script on? ${s.active}.`)
-                            log(initialtoken)
-                            log(turnorder)
+                            log(`Is the script on? ${s.active ? 'Yes' : 'No'}.`)
+                            log(s.initialtoken)
+                            log(s.turnorder)
+                            printToChat(msg, 'Logs sent to console.');
                             break;
 
                             case 'clear':
-                            state.CombatMovement = {'active':false, 'autoreset':true};
-                            turnorder = {};
-                            initialtoken = false;
+                            state.CombatMovement = defaultState;
+                            printToChat(msg, 'All data has been reset');
                             break;
                         }
+                    return;
                     break;
 
                     default:
-                    showHelp(msg);
+                    if(msg.selected) {
+                        if(!s.active) {
+                            printToChat(msg, 'Please start the script first.')
+                        } else if(args.length >= 2) {
+                            changeCharacterMovementSpeed(msg, args[1])
+                        } else if(args.length === 1) {
+                            giveDashMovement(msg)
+                        }
+                    } else {
+                        showHelp(msg)
+                    }
                     break;
                 }
         }
+    },
+
+    changeCharacterMovementSpeed = function(msg, speedString) {
+        var selectedTokenID, newMovementSpeed, isAdded,
+        selectedTokenNameArray = [],
+        speed = parseInt(speedString, 10);
+        if(isNaN(speed)) {
+            printToChat(msg, 'Please enter a valid number');
+            return;
+        }
+        if(speedString[0] === '+' || speedString[0] === '-') isAdded = true;
+        else isAdded = false;
+
+        // Main loop to alter character sheets
+        for(i = 0; i < msg.selected.length; i++){
+            selectedTokenID = msg.selected[i]._id;
+            characterID = getObj('graphic', selectedTokenID).get('represents')
+            // Ignore selected tokens without character sheets
+            if(characterID == '') { continue; }
+
+            var speedAttribute = findObjs({
+                _type: "attribute",
+                _characterid: characterID,
+                name: movementattribute
+                });
+
+            if(isAdded) newMovementSpeed = speedAttribute[0].get('current') + speed
+            else        newMovementSpeed = speed
+
+            speedAttribute[0].set('current', newMovementSpeed);
+            selectedTokenNameArray.push(getObj('character', characterID).get('name'));
+
+            // Update the turnorder object as well
+            if(s.turnorder.hasOwnProperty(selectedTokenID)) {
+                s.turnorder[selectedTokenID][1] = newMovementSpeed;
+                if(s.turnorder[selectedTokenID][0] > s.turnorder[selectedTokenID][1]) {
+                    s.turnorder[selectedTokenID][0] = s.turnorder[selectedTokenID][1]
+                }
+            }
+        } // End main loop to alter character sheets
+        output = isAdded  ? `You have changed the movement speed(s) of ${selectedTokenNameArray.join(', ')} by ${speed}.`
+                        : `You have set the movement speed(s) of ${selectedTokenNameArray.join(', ')} to ${speed}.`;
+        printToChat(msg, output)
+    },
+
+    giveDashMovement = function(msg) {
+        var selectedTokenID,
+        selectedTokenNameArray = [];
+        for(i = 0; i < msg.selected.length; i++) {
+            selectedTokenID = msg.selected[i]._id;
+            if(s.turnorder.hasOwnProperty(selectedTokenID)) {
+                s.turnorder[selectedTokenID][0] += s.turnorder[selectedTokenID][1];
+                selectedTokenNameArray.push(getObj('graphic', selectedTokenID).get('name'));
+            }
+        }
+        output = `You have given dash movement to ${selectedTokenNameArray.join(', ')}`
+        printToChat(msg, output)
     },
 
     printToChat = function(msg, content) {
@@ -338,16 +376,16 @@ var CombatMovement = CombatMovement || (function(){
                 '</div>'+
                 Chat_Formatting_END;
         printToChat(msg, helpContent);
-    };
+    },
 
     handleTokenMovement = function(obj, prev) {
         if( !s.active
-            || !turnorder.hasOwnProperty(obj.id)
+            || !s.turnorder.hasOwnProperty(obj.id)
             || !Campaign().get('initiativepage')
             || JSON.parse(Campaign().get('turnorder')).length == 1
             ) { return; }
 
-        if(turnorder[obj.id][0] <= 0) {
+        if(s.turnorder[obj.id][0] <= 0) {
             obj.set({left: prev.left, top: prev.top, rotation: prev.rotation});
         }
 
@@ -365,19 +403,19 @@ var CombatMovement = CombatMovement || (function(){
         // Get movement coordinates and split em into an actually nice array
         rawlastmove = obj.get('lastmove').split(',')
         integerlastmove = _.map(rawlastmove, function(value) { return parseInt(value) });
-        Xcoords = integerlastmove.filter(function(value, index) { return parseInt(index) % 2 == 0; });
-        Ycoords = integerlastmove.filter(function(value, index) { return parseInt(index) % 2 == 1; });
-        lastmove = _.zip(Xcoords, Ycoords);
+        Xcoords = integerlastmove.filter(function(value, index) { return index % 2 == 0; });
+        Ycoords = integerlastmove.filter(function(value, index) { return index % 2 == 1; });
+        movearray = _.zip(Xcoords, Ycoords);
 
         //FOR EACH JUMP, CALCULATE DISTANCE AND ADD IT TO A TOTAL.
-        for(i=0; i + 1 < lastmove.length; i++) {
-            movementX = Math.abs(lastmove[i][0] - lastmove[i+1][0])*currentPageScale*currentPageGridSize/70;
-            movementY = Math.abs(lastmove[i][1] - lastmove[i+1][1])*currentPageScale*currentPageGridSize/70;
+        for(i=0; i + 1 < movearray.length; i++) {
+            movementX = Math.abs(movearray[i][0] - movearray[i+1][0])*currentPageScale*currentPageGridSize/70;
+            movementY = Math.abs(movearray[i][1] - movearray[i+1][1])*currentPageScale*currentPageGridSize/70;
             totaldistance += determineDistanceMoved(movementX, movementY, currentPageDiagonalType, currentPageScale);
         }
 
         // Did the player actually end at their last waypoint? If not, calculate ending movement.
-        lastcoords = _.last(lastmove);
+        lastcoords = _.last(movearray);
         if(obj.get('left') != lastcoords[0] || obj.get('top') != lastcoords[1]) {
             movementX = Math.abs(obj.get('left') - lastcoords[0])*currentPageScale*currentPageGridSize/70;
             movementY = Math.abs(obj.get('top') - lastcoords[1])*currentPageScale*currentPageGridSize/70;
@@ -385,10 +423,10 @@ var CombatMovement = CombatMovement || (function(){
         }
 
         // Can we move this distance? If no, stop.
-        if(turnorder[obj.id][0] < totaldistance) {
+        if(s.turnorder[obj.id][0] < totaldistance) {
             obj.set({left: prev.left, top: prev.top, rotation: prev.rotation});
         } else {
-            turnorder[obj.id][0] = turnorder[obj.id][0] - totaldistance;
+            s.turnorder[obj.id][0] -= totaldistance;
         }
     },
 
