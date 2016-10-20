@@ -446,7 +446,7 @@ var CombatMovement = CombatMovement || (function(){
     getThreeFiveDistance = function(x, y, scale) {
         var higher = x > y ? x : y,
         lower = x < y ? x : y,
-        totalmovement = higher + (Math.floor(lower/10)*scale);
+        totalmovement = higher + (Math.floor(lower/scale*2)*scale);
         return totalmovement;
     },
     getEuclideanDistance = function(x, y, scale) {
