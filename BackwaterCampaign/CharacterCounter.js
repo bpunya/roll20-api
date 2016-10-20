@@ -5,9 +5,10 @@ var CharacterCount = CharacterCount || (function(){
     // Created to count character sheets
     // For the Backwater Living Campaign
     var
-    currentversion = '1.0',
-    lastUpdate = 1475552233,
+    currentversion = '1.1',
+    lastUpdate = 1476944262,
 
+    maxClassesToCount = 2,
     alignmentdictionary = {},
     racedictionary = {},
     storedalignmentdictionary = {
@@ -43,11 +44,15 @@ var CharacterCount = CharacterCount || (function(){
         'Human': ['human'],
         'Variant Human': ['variant human','human, variant','human (variant)'],
         'Tiefling': ['tiefling','teifling']
-        };
+        },
+    characterClassNames = ['barbarian','bard','cleric','druid','fighter','paladin','ranger','rogue','sorcerer','warlock','wizard']
+
+    characterlist = [];
 
     checkVersion = function(){
         if(!state.CharacterCount){ state.CharacterCount = {}; }
         s = state.CharacterCount;
+        s.active = true;
         if(s.version !== currentversion){
             switch(currentversion){
                 case '1.0':
@@ -56,14 +61,27 @@ var CharacterCount = CharacterCount || (function(){
                     s.racedictionary = storedracedictionary
                     s.version = currentversion
                 break;
+
+                case '1.1':
+                    log('Updating to v1.1')
+                    s.active = false;
+                    s.alignmentdictionary = storedalignmentdictionary
+                    s.racedictionary = storedracedictionary
+                    s.version = currentversion
+                break;
             }
         }
         alignmentdictionary = s.alignmentdictionary
         racedictionary = s.racedictionary
+        log('Building Character Count character lists')
+        characterlist = getCharacters()
         log('-- Character Count v'+s.version+' -- ['+(new Date(lastUpdate*1000))+']');
+        s.active = false;
     },
 
-    countCharacterAlignments = function(characterlist, msg){
+    countCharacterAlignments = function(msg){
+        state.CharacterCount.active = true;
+        sendChat('Character Count', `/w ${msg.who}<br> Checking Alignments now!`, null, {noarchive:true})
         var alignments = {
             'LG':0,'NG':0,'CG':0,'LN':0,'N':0,'CN':0,'LE':0,'NE':0,'CE':0,'Unable to parse':[]
             };
@@ -90,20 +108,22 @@ var CharacterCount = CharacterCount || (function(){
         printOutput(alignments,'Character alignments', msg);
     },
 
-    countCharacterClasses = function(characterlist, msg){
-        var classes = {
-            'barbarian':0,'bard':0,'cleric':0,'druid':0,'fighter':0,'monk':0,
-            'paladin':0,'ranger':0,'rogue':0,'sorcerer':0,'warlock':0,'wizard':0
-            };
+    countCharacterClasses = function(msg, namearray){
+        state.CharacterCount.active = true;
+        sendChat('Character Count', `/w ${msg.who}<br> Checking Classes now!`, null, {noarchive:true})
+        var classes = {};
+        for(var i = 0; i < namearray.length; i++) { classes[namearray[i]] = 0; }
         for(character in characterlist){
-            for(classname in classes){
-                classes[classname] += getAttrByName(characterlist[character].id, classname+'_level')
+            for(var i = 0; i < namearray.length; i++){
+                classes[namearray[i]] += getAttrByName(characterlist[character].id, namearray[i]+'_level')
             }
         }
         printOutput(classes,'Combined Class levels', msg);
     },
 
-    countCharacterLevels  = function(characterlist, msg){
+    countCharacterLevels  = function(msg){
+        state.CharacterCount.active = true;
+        sendChat('Character Count', `/w ${msg.who}<br> Checking Character levels now!`, null, {noarchive:true})
         var levels = {
             '1':0,'2':0,'3':0,'4':0,'5':0,'6':0,'7':0,'8':0,'9':0,'10':0,
             '11':0,'12':0,'13':0,'14':0,'15':0,'16':0,'17':0,'18':0,'19':0,'20':0
@@ -118,7 +138,9 @@ var CharacterCount = CharacterCount || (function(){
         printOutput(levels,'Character levels', msg);
     },
 
-    countCharacterRaces = function(characterlist, msg){
+    countCharacterRaces = function(msg){
+        state.CharacterCount.active = true;
+        sendChat('Character Count', `/w ${msg.who}<br> Checking Races now!`, null, {noarchive:true})
         var races = {
             'Aarakocra':0,
             'Aasimar':0,
@@ -165,63 +187,52 @@ var CharacterCount = CharacterCount || (function(){
         printOutput(races,'Counted Player Races', msg);
     },
 
-    handleCountType = function(mContent, msg){
-        if(mContent.length<2){
-            showHelp(msg)
-            return
-        }
-        characterlist = getCharacters();
-        arg = mContent[1].toLowerCase();
-        switch(arg){
-            case 'alignments':
-                countCharacterAlignments(characterlist, msg);
-            break;
-
-            case 'alignment':
-                countCharacterAlignments(characterlist, msg);
-            break
-
-            case 'classes':
-                countCharacterClasses(characterlist, msg);
-            break;
-
-            case 'class':
-                countCharacterClasses(characterlist, msg);
-            break
-
-            case 'levels':
-                countCharacterLevels(characterlist, msg);
-            break;
-
-            case 'level':
-                countCharacterLevels(characterlist, msg);
-            break;
-
-            case 'races':
-                countCharacterRaces(characterlist, msg);
-            break;
-
-            case 'race':
-                countCharacterRaces(characterlist, msg);
-            break;
-
-            default:
-                showHelp(msg)
-            break;
-        }
-    },
-
     handleChatInput = function(msg){
-        if(msg.type !== 'api' || !playerIsGM(msg.playerid)){ return; }
-        mContent = msg.content.split(/\s/);
-        switch(mContent[0]){
-            case "!CC":
-                handleCountType(mContent, msg)
-            break;
-
+        if(msg.type !== 'api' || !playerIsGM(msg.playerid) || state.CharacterCount.active ){ return; }
+        var args = msg.content.split(/\s/)
+        switch(args[0]){
             case "!cc":
-                handleCountType(mContent, msg)
-            break;
+            case "!CC":
+                switch(args[1]){
+                    case 'alignments':
+                    case 'alignment':
+                        countCharacterAlignments(msg);
+                    break;
+
+                    case 'classes':
+                    case 'class':
+                        if(args[2].toLowerCase() == 'all') {
+                            countCharacterClasses(msg, characterClassNames)
+                        }
+                        rawArgs = args.slice(2);
+                        cleanArgs = [];
+                        for(var i = 0; i < rawArgs.length; i++) {
+                            if(cleanArgs.length >= maxClassesToCount) { break; }
+                            if(_.contains(characterClassNames, rawArgs[i].toLowerCase())) {
+                                cleanArgs.push(rawArgs[i].toLowerCase());
+                            }
+                        }
+                        if(cleanArgs.length !== 0) {
+                            countCharacterClasses(msg, cleanArgs)
+                        } else {
+                            sendChat('Character Count', `/w ${msg.who}<br> Please enter valid classnames`, null, {noarchive:true})
+                        }
+                    break;
+
+                    case 'levels':
+                    case 'level':
+                        countCharacterLevels(msg);
+                    break;
+
+                    case 'races':
+                    case 'race':
+                        countCharacterRaces(msg);
+                    break;
+
+                    default:
+                        showHelp(msg)
+                    break;
+                }
         }
     },
 
@@ -253,7 +264,7 @@ var CharacterCount = CharacterCount || (function(){
             +'<h4>Commands Available:</h4>'
             +'<em>Not case-sensitive. Script ignores all sheets listed as NPC.</em><br><br>'
             +'<strong>Alignment(s)</strong> ----<br> Counts all listed alignments. Alignments unable to be parsed are listed in a seperate line.<br>'
-            +'<strong>Class(es)</strong> ---- <br>Counts the combined total of all class levels.<br>'
+            +'<strong>Class(es)</strong> ---- <br>Counts the combined total of all class levels. You need to enter the classes to check manually.<br>'
             +'<strong>Level(s)</strong> ---- <br>Counts the amount of players at each level.<br>'
             +'<strong>Race(s)</strong> ---- <br>Counts all listed player races. Races unable to be parsed are listed in a seperate line.<br>'
             +'</p></div>',
@@ -277,6 +288,7 @@ var CharacterCount = CharacterCount || (function(){
         rawOutput.push('<em>Generated on '+new Date(Date.now())+'</em></div>'); //ending formatting goes here
         formattedOutput = rawOutput.join('');
         sendChat("CC", formattedOutput, null, {noarchive:true});
+        state.CharacterCount.active = false;
     }
 
     registerEventHandlers = function(){
