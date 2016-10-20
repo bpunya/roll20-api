@@ -197,11 +197,20 @@ var CombatMovement = CombatMovement || (function(){
             case '!CombatMovement':
             case '!CM':
 
-                // If something is selected, give it extra movement
-                if(msg.selected && args.length == 1) {
+                // If something is selected, check if there a number in args.
+                // If there is a number, we want to manipulate that character's
+                // movement speed instead of adding more to the counter.
+                if(msg.selected) {
+                    var actionTaken = false;
+                    if(args.length !== 1 && Number.isInteger(args[1])) {
+                        actionTaken = 'changed the movements of';
+                    } else if(args.length === 1) {
+                        actionTaken = 'given extra dash movement to';
+                    } else {
+                        return;
+                    };
                     if(!s.active) {
-                        printToChat(msg, 'Please deselect all tokens and '+
-                        'start the script before attempting to add extra movement');
+                        printToChat(msg, 'Please start the script first!');
                         return;
                     }
                     var selectedtokenID,
@@ -209,12 +218,17 @@ var CombatMovement = CombatMovement || (function(){
 
                     for(i=0; i < msg.selected.length; i++) {
                         selectedtokenID = msg.selected[i]._id;
-                        if(turnorder[selectedtokenID]) {
-                            turnorder[selectedtokenID][0] += turnorder[selectedtokenID][1];
-                            selectedtokenNameArray.push(getObj('graphic', selectedtokenID).get('name'));
+                        if(actionTaken == 'given extra dash movement to') {
+                            if(turnorder.hasOwnProperty(selectedtokenID)) {
+                                turnorder[selectedtokenID][0] += turnorder[selectedtokenID][1];
+                                selectedtokenNameArray.push(getObj('graphic', selectedtokenID).get('name'));
+                            }
+                        } else if(actiontaken == 'changed the movements of') {
+                            // going to need a function here to add or subtract from the character's movements
+                            // also need to figure out if a character is attached. should make a function for that.
                         }
                     }
-                    output = `You have given extra dash movement to ${selectedtokenNameArray.join(', ')}`;
+                    output = `You have ${actionTaken} ${selectedtokenNameArray.join(', ')}`;
                     printToChat(msg, output);
                     return;
                 }
@@ -350,11 +364,10 @@ var CombatMovement = CombatMovement || (function(){
 
         // Get movement coordinates and split em into an actually nice array
         rawlastmove = obj.get('lastmove').split(',')
-        evenstrcoords = rawlastmove.filter(function(value, index) { return parseInt(index) % 2 == 0; });
-        evenintcoords = _.map(evenstrcoords, function(value) { return parseInt(value) });
-        oddstrcoords = rawlastmove.filter(function(value, index) { return parseInt(index) % 2 == 1; });
-        oddintcoords = _.map(oddstrcoords, function(value) { return parseInt(value) });
-        lastmove = _.zip(evenintcoords, oddintcoords);
+        integerlastmove = _.map(rawlastmove, function(value) { return parseInt(value) });
+        Xcoords = integerlastmove.filter(function(value, index) { return parseInt(index) % 2 == 0; });
+        Ycoords = integerlastmove.filter(function(value, index) { return parseInt(index) % 2 == 1; });
+        lastmove = _.zip(Xcoords, Ycoords);
 
         //FOR EACH JUMP, CALCULATE DISTANCE AND ADD IT TO A TOTAL.
         for(i=0; i + 1 < lastmove.length; i++) {
