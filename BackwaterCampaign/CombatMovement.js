@@ -390,7 +390,7 @@ var CombatMovement = CombatMovement || (function(){
         }
 
         // Get page properties
-        var movementX, movementY, lastmove, evencoords, oddcoords,
+        var movementX, movementY, movearray, Xcoords, Ycoords, rawlastmove, integerlastmove,
         currentPage = getObj('page', obj.get('_pageid')),
         currentPageDiagonalType = currentPage.get('diagonaltype'),
         currentPageScale = currentPage.get('scale_number'),
