@@ -66,8 +66,8 @@ var KABOOM = KABOOM || (function () {
 
   // Handles chat input
   handleChatInput = function (msg) {
+    if (msg.type !== 'api' || !playerisGM(msg.playerid)) return
     var args = msg.content.split(/\s/)
-    if (msg.type !== 'api') return
     switch (args[0]) {
       case '!KABOOM':
         // parseOptions actually handles all functions related to the chat command
