@@ -65,13 +65,17 @@ var KABOOM = KABOOM || (function () {
         // I think that I should probably change this
         var options = parseOptions(args.slice(1))
         if (!options.hasOwnProperty('min')) return
+
         // Can we make an explosion?
-        if (msg.selected.length < 1) {printToChat(msg.who, 'Please select one token to designate the center of the explosion.'); return}
+        if (msg.selected.length < 1) { printToChat(msg.who, 'Please select one token to designate the center of the explosion.'); return }
+
         // Prepare objects
         var explosion_center = getObj('graphic'. msg.selected[0])
         var objectsThrown = findDrawings(explosion_center)
+
         // Do we need to explode?
         if (s.vfx) createExplosion(getCoordinates(explosion_center), explosion_center.get('_pageid'), options.type)
+
         // Main loop to make things move
         for (let i = 0; i < objectsThrown.length; i++) {
           moveGraphic(objectsThrown[i], explosion_center, options)
@@ -81,9 +85,9 @@ var KABOOM = KABOOM || (function () {
 
   // Handles figuring out how far to throw the object and where
   moveGraphic = function (flying_object, explosion_center, options) {
-    var obj1, obj2, d_x, d_y, distance, distance_weight, f_obj_size, item_weight, new_distance, 
+    var obj1, obj2, d_x, d_y, distance, distance_weight, f_obj_size, item_weight, new_distance,
       theta, new_d_x, new_d_y, new_x, new_y, page, page_scale, page_max_x, page_max_y
-      
+
     // Get page information
     page = getObj('page', explosion_center.get('_pageid'))
     page_scale = 70 / page.get('scale_number')
@@ -97,7 +101,7 @@ var KABOOM = KABOOM || (function () {
     // Start math calculations
     d_x = obj2[0] - obj1[0]
     d_y = obj2[1] - obj1[1]
-    distance = Math.sqrt(d_x^2 + d_y^2)
+    distance = Math.sqrt(d_x ^ 2 + d_y ^ 2)
 
     // Calculate new distance
     if (!options.max) options.max = options.min * 2
@@ -105,7 +109,7 @@ var KABOOM = KABOOM || (function () {
     f_obj_size = flying_object.get('width') * flying_object.get('height') / 4900
     item_weight = getWeight(f_obj_size, s.min_size, s.max_size)
     if (distance_weight === 0 || item_weight === 0) return
-    new_distance = distance + (options.min * page_scale * distance_weight * s.ignore_size ? 1: item_weight)
+    new_distance = distance + (options.min * page_scale * distance_weight * s.ignore_size ? 1 : item_weight)
 
     // Calculate new location
     theta = Math.atan2(d_y, d_x)
@@ -125,7 +129,7 @@ var KABOOM = KABOOM || (function () {
   // Returns an object with all of the commands inside.
   // This functionality should probably go back to handleChatInput
   parseOptions = function (input) {
-    var settings_unchanged = true
+    var option_found = true
     var options = {}
     if (input.length === 1) { showHelp('gm'); return }
     if (parseInt(input[0], 10).toString() === input[0]) options.min = parseInt(input[0], 10)
@@ -141,41 +145,40 @@ var KABOOM = KABOOM || (function () {
             case 'type':
               if (VFXtypes.includes(input[i + 2])) s.default_type = input[i + 2]
               printToChat('gm', `The default explosion type is now ${input[i + 2]}.`)
-              settings_unchanged = false
+              option_found = false
               break
             case 'vfx':
               if (input[i + 2] === 'on') s.vfx = true
               else if (input[i + 2] === 'off') s.vfx = false
               printToChat('gm', `VFX are now ${s.vfx ? 'enabled' : 'disabled'} on explosions.`)
-              settings_unchanged = false
+              option_found = false
               break
             case 'same-layer':
               if (input[i + 2] === 'on') s.same_layer_only = true
               else if (input[i + 2] === 'off') s.same_layer_only = false
               printToChat('gm', `Objects ${s.same_layer_only ? 'must be' : "don't have to be"} on the same layer as the explosion token now.`)
-              settings_unchanged = false
+              option_found = false
               break
             case 'ignore-size':
               if (input[i + 2] === 'on') s.ignore_size = true
               else if (input[i + 2] === 'off') s.ignore_size = false
               printToChat('gm', `An object's size is now ${s.ignore_size ? 'ignored' : 'included'} in distance calculations.`)
-              settings_unchanged = false
+              option_found = false
               break
             case 'min-size':
-              if (parseInt(input[i + 2], 10).toString() === input[i +2]) s.min_size = parseInt(input[i + 2], 10)
-              printToChat('gm', `All objects smaller than ${s.min_size} are now considered light.`)
+              if (parseInt(input[i + 2], 10).toString() === input[i + 2]) s.min_size = parseInt(input[i + 2], 10)
+              printToChat('gm', `All objects smaller than ${s.min_size} square(s) are now considered light.`)
+              option_found = false
               break
             case 'max-size':
-              if (parseInt(input[i + 2], 10).toString() === input[i +2]) s.max_size = parseInt(input[i + 2], 10)
-              printToChat('gm', `All objects larger than ${s.max_size} are now considered too heavy to move.`)
-              break
-            case 'explosion-size':
-              if (parseInt(input[i + 2], 10).toString() === input[i +2]) s.default_min = parseInt(input[i + 2], 10)
+              if (parseInt(input[i + 2], 10).toString() === input[i + 2]) s.max_size = parseInt(input[i + 2], 10)
+              printToChat('gm', `All objects larger than ${s.max_size} square(s) are now considered too heavy to move.`)
+              option_found = false
               break
           }
       }
     }
-    if (Object.keys(options).length < 1 && settings_unchanged) showHelp('gm')
+    if (Object.keys(options).length < 1 && option_found) showHelp('gm')
     return options
   }
 
