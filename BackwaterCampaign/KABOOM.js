@@ -157,7 +157,7 @@ var KABOOM = KABOOM || (function () {
             // This level is reserved for all settings commands
             case 'type':
               if (_.contains(VFXtypes, input[i + 1])) s.default_type = input[i + 2]
-              printToChat('gm', `The default explosion type is now ${input[i + 2]}.`)
+              printToChat('gm', `The default explosion type is now ${s.default_type}.`)
               settings_unchanged = false
               break
 
@@ -202,9 +202,8 @@ var KABOOM = KABOOM || (function () {
 
   // Shows help!
   showHelp = function (target) {
-    var content = '' +
-                  '' +
-                  ''
+    var content = 'This is supposed to be a help menu.' +
+                  'But I forgot to add a real one.'
     printToChat(target, content)
   }
 
