@@ -66,7 +66,7 @@ var KABOOM = KABOOM || (function () {
 
   // Handles chat input
   handleChatInput = function (msg) {
-    if (msg.type !== 'api' || !playerisGM(msg.playerid)) return
+    if (msg.type !== 'api' || !playerIsGM(msg.playerid)) return
     var args = msg.content.split(/\s/)
     switch (args[0]) {
       case '!KABOOM':
