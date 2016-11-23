@@ -97,6 +97,8 @@ var KABOOM = KABOOM || (function () {
     var obj1, obj2, d_x, d_y, distance, distance_weight, f_obj_size, item_weight, new_distance,
     theta, new_d_x, new_d_y, new_x, new_y, page, page_scale, page_max_x, page_max_y
 
+    if (flying_object.id === explosion_center.id) return
+
     // Get page information
     page = getObj('page', explosion_center.get('_pageid'))
     page_scale = 70 / page.get('scale_number')
