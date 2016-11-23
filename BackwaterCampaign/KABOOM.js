@@ -144,61 +144,55 @@ var KABOOM = KABOOM || (function () {
     var options = {}
     if (parseInt(input[0], 10).toString() === input[0]) options['min'] = parseInt(input[0], 10)
     if (parseInt(input[1], 10).toString() === input[1]) options['max'] = parseInt(input[1], 10)
+
+    // Start Main Loop!
     for (var i = 0; i < input.length; i++) {
       if (input[i].slice(0, 2) !== '--') continue
+      // We check here if they want a specific type. Last command wins.
+      if (_.contains(VFXtypes, input[i].slice(2))) options['type'] = input[i].slice(2)
       switch (input[i].slice(2)) {
 
-        // This level is reserved for all explosion related options
         case 'type':
-          if (_.contains(VFXtypes, input[i + 1])) options['type'] = input[i + 1]
+          if (_.contains(VFXtypes, input[i + 1])) s.default_type = input[i + 1]
+          printToChat('gm', `The default explosion type is now ${s.default_type}.`)
+          settings_unchanged = false
           break
 
-        case 'default':
-          switch (input[i + 1]) {
+        case 'vfx':
+          if (input[i + 1] === 'on') s.vfx = true
+          else if (input[i + 1] === 'off') s.vfx = false
+          printToChat('gm', `VFX are now ${s.vfx ? 'enabled' : 'disabled'} on explosions.`)
+          settings_unchanged = false
+          break
 
-            // This level is reserved for all settings commands
-            case 'type':
-              if (_.contains(VFXtypes, input[i + 1])) s.default_type = input[i + 2]
-              printToChat('gm', `The default explosion type is now ${s.default_type}.`)
-              settings_unchanged = false
-              break
+        case 'same-layer':
+          if (input[i + 1] === 'on') s.same_layer_only = true
+          else if (input[i + 1] === 'off') s.same_layer_only = false
+          printToChat('gm', `Objects ${s.same_layer_only ? 'must be' : "don't have to be"} on the same layer as the explosion token now.`)
+          settings_unchanged = false
+          break
 
-            case 'vfx':
-              if (input[i + 2] === 'on') s.vfx = true
-              else if (input[i + 2] === 'off') s.vfx = false
-              printToChat('gm', `VFX are now ${s.vfx ? 'enabled' : 'disabled'} on explosions.`)
-              settings_unchanged = false
-              break
+         case 'ignore-size':
+          if (input[i + 1] === 'on') s.ignore_size = true
+          else if (input[i + 1] === 'off') s.ignore_size = false
+          printToChat('gm', `An object's size is now ${s.ignore_size ? 'ignored' : 'included'} in distance calculations.`)
+          settings_unchanged = false
+          break
 
-            case 'same-layer':
-              if (input[i + 2] === 'on') s.same_layer_only = true
-              else if (input[i + 2] === 'off') s.same_layer_only = false
-              printToChat('gm', `Objects ${s.same_layer_only ? 'must be' : "don't have to be"} on the same layer as the explosion token now.`)
-              settings_unchanged = false
-              break
+        case 'min-size':
+          if (parseInt(input[i + 1], 10).toString() === input[i + 2]) s.min_size = parseInt(input[i + 1], 10)
+          printToChat('gm', `All objects smaller than ${s.min_size} square(s) are now considered light.`)
+          settings_unchanged = false
+          break
 
-            case 'ignore-size':
-              if (input[i + 2] === 'on') s.ignore_size = true
-              else if (input[i + 2] === 'off') s.ignore_size = false
-              printToChat('gm', `An object's size is now ${s.ignore_size ? 'ignored' : 'included'} in distance calculations.`)
-              settings_unchanged = false
-              break
-
-            case 'min-size':
-              if (parseInt(input[i + 2], 10).toString() === input[i + 2]) s.min_size = parseInt(input[i + 2], 10)
-              printToChat('gm', `All objects smaller than ${s.min_size} square(s) are now considered light.`)
-              settings_unchanged = false
-              break
-
-            case 'max-size':
-              if (parseInt(input[i + 2], 10).toString() === input[i + 2]) s.max_size = parseInt(input[i + 2], 10)
-              printToChat('gm', `All objects larger than ${s.max_size} square(s) are now considered too heavy to move.`)
-              settings_unchanged = false
-              break
-          }
+        case 'max-size':
+          if (parseInt(input[i + 1], 10).toString() === input[i + 1]) s.max_size = parseInt(input[i + 1], 10)
+          printToChat('gm', `All objects larger than ${s.max_size} square(s) are now considered too heavy to move.`)
+          settings_unchanged = false
+          break
       }
-    }
-    if (Object.keys(options).length < 1 && settings_unchanged) { showHelp('gm') }
+    } // End Main Loop!
+    if (Object.keys(options).length < 1 && settings_unchanged) showHelp('gm')
     return options
   }
 
