@@ -19,53 +19,56 @@ var KABOOM = KABOOM || (function () {
     s = state.KABOOM;
 
   // Run on launch
-  checkVersion = function () {
+  var checkVersion = function () {
     if (!s) { state.KABOOM = {'vfx': true, 'ignore_size': false, 'default_type': 'fire', 'same_layer_only': true, 'min_size': 1, 'max_size': 9} }
     log(`-- KABOOM v${version} -- [${new Date(lastUpdate * 1000)}]`)
   }
 
   // Creates the explosion VFX
   // Requires a coordinate array.
-  createExplosion = function (coordinate_array, pageid, explosion_type) {
+  var createExplosion = function (explosion_center, explosion_type) {
     if (explosion_type === undefined) explosion_type = s.default_type
+    var coordinate_array = getCoordinates(explosion_center)
+    var pageid = explosion_center.get('_pageid')
     spawnFx(coordinate_array[0], coordinate_array[1], `explode-${explosion_type}`, pageid)
   }
 
   // Returns an array of all valid drawings to move
-  findDrawings = function (explosion_center) {
-    var pageID = explosion_center.get('_pageid'),
-    layer = explosion_center.get('layer')
+  var findDrawings = function (explosion_center) {
+    var pageID = explosion_center.get('_pageid')
+    var layer = explosion_center.get('layer')
     if (s.same_layer_only) {
-        return findObjs({
-            '_type': 'graphic',
-            '_pageid': pageID,
-            'isdrawing': true,
-            'layer': layer
-    })}
+      return findObjs({
+        '_type': 'graphic',
+        '_pageid': pageID,
+        'isdrawing': true,
+        'layer': layer
+      })}
     else {
-        return findObjs({
-            '_type': 'graphic',
-            '_pageid': pageID,
-            'isdrawing': true
-    })}
+      return findObjs({
+        '_type': 'graphic',
+        '_pageid': pageID,
+        'isdrawing': true
+      })}
   }
 
   // Returns an array of the input object's coordinates
-  getCoordinates = function (obj) {
+  var getCoordinates = function (obj) {
     return [obj.get('left'), obj.get('top')]
   }
 
   // Returns the 'weight' of the object (to modify distance thrown) from 0 to 1
   // If the weight is lower than min_threshold, the returned value is always 1
   // If the weight is higher than max_threshold, the returned value is always 0
-  getWeight = function (weight, min_threshold, max_threshold) {
-    return min_threshold > max_threshold ? 1 :
-            weight < min_threshold ? 1 : weight > max_threshold ? 0 :
-            -(weight - min_threshold) / (max_threshold - min_threshold) + 1
+  var getWeight = function (weight, min_threshold, max_threshold) {
+    return min_threshold > max_threshold ? 1
+            : weight < min_threshold ? 1
+            : weight > max_threshold ? 0
+            : -(weight - min_threshold) / (max_threshold - min_threshold) + 1
   }
 
   // Handles chat input
-  handleChatInput = function (msg) {
+  var handleChatInput = function (msg) {
     if (msg.type !== 'api' || !playerIsGM(msg.playerid)) return
     var args = msg.content.split(/\s/)
     switch (args[0]) {
@@ -82,20 +85,16 @@ var KABOOM = KABOOM || (function () {
         var explosion_center = getObj('graphic', msg.selected[0]._id)
         var objectsThrown = findDrawings(explosion_center)
 
-        // Do we need to explode?
-        if (s.vfx) createExplosion(getCoordinates(explosion_center), explosion_center.get('_pageid'), options.type)
-
-        // Main loop to make things move
-        for (var i = 0; i < objectsThrown.length; i++) {
-          moveGraphic(objectsThrown[i], explosion_center, options)
-        } // End main loop
+        // Do the fun stuff
+        if (s.vfx) createExplosion(explosion_center, options.type)
+        objectsThrown.map(function (object) { moveGraphic(object, explosion_center, options) })
     }
   }
 
   // Handles figuring out how far to throw the object and where
-  moveGraphic = function (flying_object, explosion_center, options) {
+  var moveGraphic = function (flying_object, explosion_center, options) {
     var obj1, obj2, d_x, d_y, distance, distance_weight, f_obj_size, item_weight, new_distance,
-    theta, new_d_x, new_d_y, new_x, new_y, page, page_scale, page_max_x, page_max_y
+      theta, new_d_x, new_d_y, new_x, new_y, page, page_scale, page_max_x, page_max_y
 
     if (flying_object.id === explosion_center.id) return
 
@@ -139,7 +138,7 @@ var KABOOM = KABOOM || (function () {
 
   // Returns an object with all of the commands inside.
   // This functionality should probably go back to handleChatInput
-  parseOptions = function (input) {
+  var parseOptions = function (input) {
     var settings_unchanged = true
     var options = {}
     if (parseInt(input[0], 10).toString() === input[0]) options['min'] = parseInt(input[0], 10)
@@ -197,20 +196,20 @@ var KABOOM = KABOOM || (function () {
   }
 
   // Shows help!
-  showHelp = function (target) {
+  var showHelp = function (target) {
     var content = 'This is supposed to be a help menu.' +
                   'But I forgot to add a real one.'
     printToChat(target, content)
   }
 
   // Pre-formatted sendChat function.
-  printToChat = function (target, content) {
+  var printToChat = function (target, content) {
     sendChat('Combat Movement', `/w ${target} <br>` +
              Chat_Formatting_START + content + Chat_Formatting_END,
              null, {noarchive: true})
   }
 
-  registerEventHandlers = function () {
+  var registerEventHandlers = function () {
     on('chat:message', handleChatInput)
   }
 
