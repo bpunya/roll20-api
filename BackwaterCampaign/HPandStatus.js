@@ -24,7 +24,7 @@ var HPandStatus = HPandStatus || (function () {
       log(`-- HPandStatus v${version} -- [${new Date(lastUpdate * 1000)}]`)
     },
 
-    getHPStatus = function (obj, prev) {
+    getHP = function (obj, prev) {
       if (!prev) { prev = obj }
       var HP = {
         now: parseInt(obj.get(CurrentHPLocation), 10) || 0,
@@ -33,10 +33,10 @@ var HPandStatus = HPandStatus || (function () {
         tmp: parseInt(getAttrByName(obj.get('represents'), TempHitPointsIn), 10) || 0,
         reduced: parseInt(getAttrByName(obj.get('represents'), ReducedMaxIn), 10) || 0
       }
-      HP.delta = Math.abs(HP.now - HP.old)
+      HP.delta = Math.abs(HP.old - HP.now)
       HP.hurt = (HP.now < HP.old)
-      HP.bloodied = Math.floor(HP.max / 2) || 0
-      HP.dead = (obj.get('represents') !== '') ? -HP.bloodied : 0
+      HP.bloodied = Math.floor(HP.max / 2)
+      HP.dead = (obj.get('represents') !== '') ? -HP.max : 0
       return HP
     },
 
@@ -48,15 +48,11 @@ var HPandStatus = HPandStatus || (function () {
 
     tokenChange = function (obj, prev) {
       if (obj.get('isdrawing')) return
-      var HP = getHPStatus(obj, prev)
+      var HP = getHP(obj, prev)
       if (HP.max === 0 || HP.delta === 0) return
-      // So we can set all attributes at once
       var target = {}
-      // Handle healing while below 0
-      if (ASSUME_HEALS && !HP.hurt && HP.old < 0) {
-        HP.now = HP.delta
-      }
-      // Handle temp HP damage calc
+
+      // Handle (temp HP) damage
       if (HP.hurt && HP.tmp !== 0) {
         var tempHPAttr = findObjs({
           _type: 'attribute',
@@ -64,22 +60,26 @@ var HPandStatus = HPandStatus || (function () {
           name: TempHitPointsIn})[0]
         if (HP.tmp < 0) {
           HP.tmp = 0
-          tempHPAttr.set('current', HP.tmp)
         } else {
           var oldTmp = HP.tmp
           HP.tmp = Math.max(HP.tmp - HP.delta, 0)
           HP.delta = Math.max(HP.delta - oldTmp, 0)
-          HP.now = (HP.old - HP.delta)
+          HP.now = HP.old - HP.delta
         }
         tempHPAttr.set('current', HP.tmp)
       }
-      // Handle too much HP
-      if (HP.now > HP.max) {
-        HP.now = HP.max
+
+      // Handle healing
+      if (ASSUME_HEALS && !HP.hurt && HP.old < 0) {
+        HP.now = HP.delta
       }
       if (HP.reduced && HP.now > HP.reduced) {
         HP.now = HP.reduced
       }
+      if (HP.now > HP.max) {
+        HP.now = HP.max
+      }
+
       target[CurrentHPLocation] = HP.now
       if (HP.now <= HP.dead) removeTurn(obj)
       obj.set(Object.assign(target, statusCheck(HP)))
@@ -90,7 +90,7 @@ var HPandStatus = HPandStatus || (function () {
         oldStatus = prev['statusmarkers'].split(','),
         newStatus = obj.get('statusmarkers').split(',')
       if (_.intersection(oldStatus, toCheck) > _.intersection(newStatus, toCheck)) {
-        var HP = getHPStatus(obj)
+        var HP = getHP(obj)
         obj.set(statusCheck(HP))
       }
     },
@@ -98,23 +98,10 @@ var HPandStatus = HPandStatus || (function () {
     statusCheck = function (HP) {
       // Status Marker Updates Now
       var target = {}
-      if (HP.now <= 0 && HP.now > HP.dead) {
-        target['status_' + DyingMarker] = true
-      } else {
-        target['status_' + DyingMarker] = false
-      }
-      if (HP.now <= HP.bloodied && HP.now > HP.dead) {
-        target['status_' + BloodiedMarker] = true
-      } else {
-        target['status_' + BloodiedMarker] = false
-      }
-      if (HP.now <= HP.dead) {
-        HP.now = HP.dead
-        target[CurrentHPLocation] = HP.dead
-        target['status_' + DeadMarker] = true
-      } else {
-        target['status_' + DeadMarker] = false
-      }
+      target['status_' + BloodiedMarker] = (HP.now > HP.dead && HP.now <= HP.bloodied)
+      target['status_' + DyingMarker] = (HP.now > HP.dead && HP.now <= 0)
+      target['status_' + DeadMarker] = (HP.now <= HP.dead)
+      target[CurrentHPLocation] = (HP.now <= HP.dead) ? HP.dead : HP.now
       return target
     },
 
