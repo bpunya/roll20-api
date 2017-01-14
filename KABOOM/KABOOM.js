@@ -37,19 +37,12 @@ var KABOOM = KABOOM || (function () {
   var findDrawings = function (explosion_center) {
     var pageID = explosion_center.get('_pageid')
     var layer = explosion_center.get('layer')
-    if (s.same_layer_only) {
-      return findObjs({
+    return findObjs({
         '_type': 'graphic',
         '_pageid': pageID,
         'isdrawing': true,
-        'layer': layer
-      })}
-    else {
-      return findObjs({
-        '_type': 'graphic',
-        '_pageid': pageID,
-        'isdrawing': true
-      })}
+        'layer': s.same_layer_only ? layer : true
+      })
   }
 
   // Returns an array of the input object's coordinates
