@@ -46,7 +46,7 @@ var HPandStatus = HPandStatus || (function () {
       Campaign().set('turnorder', JSON.stringify(_.reject(turnorder, function (item) { return item.id === obj.id })))
     },
 
-    tokenChange = function (obj, prev) {
+    onTokenChange = function (obj, prev) {
       if (obj.get('isdrawing')) return
       var HP = getHP(obj, prev)
       if (HP.max === 0 || HP.delta === 0) return
@@ -85,13 +85,13 @@ var HPandStatus = HPandStatus || (function () {
       obj.set(Object.assign(target, statusCheck(HP)))
     },
 
-    statusChange = function (obj, prev) {
+    onStatusChange = function (obj, prev) {
       var toCheck = [BloodiedMarker, DyingMarker, DeadMarker],
         oldStatus = prev['statusmarkers'].split(','),
         newStatus = obj.get('statusmarkers').split(',')
       if (_.intersection(oldStatus, toCheck) > _.intersection(newStatus, toCheck)) {
         var HP = getHP(obj)
-        obj.set(statusCheck(HP))
+        if (HP.max !== 0) obj.set(statusCheck(HP))
       }
     },
 
@@ -106,8 +106,8 @@ var HPandStatus = HPandStatus || (function () {
     },
 
     registerEventHandlers = function () {
-      on('change:token:' + CurrentHPLocation, tokenChange)
-      on('change:token:statusmarkers', statusChange)
+      on('change:token:' + CurrentHPLocation, onTokenChange)
+      on('change:token:statusmarkers', onStatusChange)
     }
 
   return {
