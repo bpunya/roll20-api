@@ -6,83 +6,93 @@
 // https://github.com/shdwjk/Roll20API/blob/master/TempHPAndStatus/TempHPAndStatus.js
 
 var HPandStatus = HPandStatus || (function () {
-  var version = '0.5',
-    lastUpdate = 1480560786,
-    HitPointBarNum = 1,
-    TempHitPointsIn = 'temp_hp',
-    ReducedMaxIn = 'hp_max_reduced',
+
+//  Campaign-Specific Settings -- Change these to suit your game.
+
+  var HPBarNumber = 1,
+    Is_NPC_Attribute = 'is_npc',
+    TempHPAttribute = 'temp_hp',
+    ReducedMaxHPAttribute = 'hp_max_reduced',
+    Always_Start_Healing_From_Zero = true,
+
+//  Status Marker Information -- A full list of statusmarker names is here:
+//  https://wiki.roll20.net/API:Objects#Graphic_.28Token.2FMap.2FCard.2FEtc..29
 
     BloodiedMarker = 'half-heart',
     DyingMarker = 'sleepy',
     DeadMarker = 'dead',
-    ASSUME_HEALS = true,
 
-    CurrentHPLocation = 'bar' + HitPointBarNum + '_value',
-    MaxHPLocation = 'bar' + HitPointBarNum + '_max',
+/******************************************************************************/
+/** End of Campaign-Specific Settings                                        **/
+/******************************************************************************/
+    version = '1.0',
+    lastUpdate = 1485210467,
+    CurrentHP = 'bar' + HPBarNumber + '_value',
+    MaxHP = 'bar' + HPBarNumber + '_max',
 
     checkVersion = function () {
       log(`-- HPandStatus v${version} -- [${new Date(lastUpdate * 1000)}]`)
     },
 
     getHP = function (obj, prev) {
-      if (!prev) { prev = obj }
+      if (!prev) prev = obj
+      var isPC = (obj.get('represents') !== '' || getAttrByName(obj.get('represents'), Is_NPC_Attribute) === '0')
       var HP = {
-        now: parseInt(obj.get(CurrentHPLocation), 10) || 0,
-        old: parseInt(prev[CurrentHPLocation], 10) || 0,
-        max: parseInt(obj.get(MaxHPLocation), 10) || 0,
-        tmp: parseInt(getAttrByName(obj.get('represents'), TempHitPointsIn), 10) || 0,
-        reduced: parseInt(getAttrByName(obj.get('represents'), ReducedMaxIn), 10) || 0
+        now: parseInt(obj.get(CurrentHP), 10) || 0,
+        old: parseInt(prev[CurrentHP], 10) || 0,
+        max: parseInt(obj.get(MaxHP), 10) || 0,
+        temp: isPC ? parseInt(getAttrByName(obj.get('represents'), TempHPAttribute), 10) || 0 : 0,
+        reducedmax: isPC ? parseInt(getAttrByName(obj.get('represents'), ReducedMaxHPAttribute), 10) || 0 : 0
       }
       HP.delta = Math.abs(HP.old - HP.now)
       HP.hurt = (HP.now < HP.old)
       HP.bloodied = Math.floor(HP.max / 2)
-      HP.dead = (obj.get('represents') !== '') ? -HP.max : 0
+      HP.dead = isPC ? -HP.max : 0
       return HP
     },
 
-    removeTurn = function (obj) {
+    removeTurn = function (token) {
       var turnorder = JSON.parse(Campaign().get('turnorder'))
       if (turnorder.length === 0) return
-      Campaign().set('turnorder', JSON.stringify(_.reject(turnorder, function (item) { return item.id === obj.id })))
+      else Campaign().set('turnorder',
+        JSON.stringify(_.reject(turnorder, function (turnObj) { return turnObj.id === token.id })))
     },
 
     onTokenChange = function (obj, prev) {
-      if (obj.get('isdrawing')) return
       var HP = getHP(obj, prev)
-      if (HP.max === 0 || HP.delta === 0) return
-      var target = {}
+      if (!HP.max || !HP.delta) return
 
       // Handle (temp HP) damage
-      if (HP.hurt && HP.tmp !== 0) {
+      if (HP.hurt && HP.temp) {
         var tempHPAttr = findObjs({
           _type: 'attribute',
           _characterid: obj.get('represents'),
-          name: TempHitPointsIn})[0]
-        if (HP.tmp < 0) {
-          HP.tmp = 0
-        } else {
-          var oldTmp = HP.tmp
-          HP.tmp = Math.max(HP.tmp - HP.delta, 0)
-          HP.delta = Math.max(HP.delta - oldTmp, 0)
+          name: TempHPAttribute})[0]
+        if (HP.temp < 0) HP.temp = 0
+        else {
+          var damageTaken = HP.delta
+          HP.delta = Math.max(HP.delta - HP.temp, 0)
+          HP.temp = Math.max(HP.temp - damageTaken, 0)
           HP.now = HP.old - HP.delta
         }
-        tempHPAttr.set('current', HP.tmp)
+        tempHPAttr.set('current', HP.temp)
       }
 
-      // Handle healing
-      if (ASSUME_HEALS && !HP.hurt && HP.old < 0) {
-        HP.now = HP.delta
+      // Are we healing? Are we higher than we're supposed to be? Are we dead?
+      HP.now = (Always_Start_Healing_From_Zero && !HP.hurt && HP.old < 0)
+        ? HP.delta : HP.now
+      HP.now = (HP.reducedmax && HP.now > HP.reducedmax)
+        ? HP.reduced : HP.now
+      HP.now = (HP.now > HP.max)
+        ? HP.max : HP.now
+      if (HP.now <= HP.dead) {
+        HP.now = HP.dead
+        removeTurn(obj)
       }
-      if (HP.reduced && HP.now > HP.reduced) {
-        HP.now = HP.reduced
+      var tokenStats = {
+        [CurrentHP]: HP.now
       }
-      if (HP.now > HP.max) {
-        HP.now = HP.max
-      }
-
-      target[CurrentHPLocation] = HP.now
-      if (HP.now <= HP.dead) removeTurn(obj)
-      obj.set(Object.assign(target, statusCheck(HP)))
+      obj.set(Object.assign(tokenStats, statusCheck(HP)))
     },
 
     onStatusChange = function (obj, prev) {
@@ -91,22 +101,20 @@ var HPandStatus = HPandStatus || (function () {
         newStatus = obj.get('statusmarkers').split(',')
       if (_.intersection(oldStatus, toCheck) > _.intersection(newStatus, toCheck)) {
         var HP = getHP(obj)
-        if (HP.max !== 0) obj.set(statusCheck(HP))
+        if (HP.max) obj.set(statusCheck(HP))
       }
     },
 
     statusCheck = function (HP) {
-      // Status Marker Updates Now
-      var target = {}
-      target['status_' + BloodiedMarker] = (HP.now > HP.dead && HP.now <= HP.bloodied)
-      target['status_' + DyingMarker] = (HP.now > HP.dead && HP.now <= 0)
-      target['status_' + DeadMarker] = (HP.now <= HP.dead)
-      target[CurrentHPLocation] = (HP.now <= HP.dead) ? HP.dead : HP.now
-      return target
+      return updatedToken = {
+        ['status_' + BloodiedMarker]: (HP.now > HP.dead && HP.now <= HP.bloodied),
+        ['status_' + DyingMarker]: (HP.now > HP.dead && HP.now <= 0),
+        ['status_' + DeadMarker]: (HP.now <= HP.dead)
+      }
     },
 
     registerEventHandlers = function () {
-      on('change:token:' + CurrentHPLocation, onTokenChange)
+      on('change:token:' + CurrentHP, onTokenChange)
       on('change:token:statusmarkers', onStatusChange)
     }
 
