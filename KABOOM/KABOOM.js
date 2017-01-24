@@ -1,4 +1,4 @@
-// Github: https://github.com/bpunya/roll20-api/blob/master/BackwaterCampaign/KABOOM.js
+// Github: https://github.com/bpunya/roll20-api/blob/master/KABOOM/KABOOM.js
 // Author: PaprikaCC (Bodin Punyaprateep)
 /* ************************************************************************** */
 
@@ -15,7 +15,7 @@ var KABOOM = KABOOM || (function () {
   // (default is minRange * explosion_ratio)
 
   var version = '1.0',
-    lastUpdate = 1485211467,
+    lastUpdate = 1485299294,
     Chat_Formatting_START = '<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">' +
                             '<div style="border-width:2px; border-style:dotted; padding:5px">',
     Chat_Formatting_END = '</div>' +
@@ -259,6 +259,10 @@ var KABOOM = KABOOM || (function () {
           if (parseInt(input[i + 1], 10).toString() === input[i + 1]) s.max_size = parseInt(input[i + 1], 10)
           printToChat('gm', `All objects larger than ${s.max_size} square(s) are now considered too heavy to move.`)
           settingsUnchanged = false
+          break
+
+        case 'reset':
+          s = defaultState
           break
 
         case 'help':
