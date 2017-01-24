@@ -6,10 +6,13 @@ var KABOOM = KABOOM || (function () {
 
   // This script allows GMs to send things flying!
   // !KABOOM <minRange> <maxRange> --<options>
+
   var explosion_ratio = 2
+  var defaultLayerToAffect = 'objects'
+
   // <minRange> determines the closest radius that all objects will be pushed to.
   // <maxRange> determines the furthest an object should fly.
-  // (default is the explosion_ratio)
+  // (default is minRange * explosion_ratio)
 
   var version = '1.0',
     lastUpdate = 1485211467,
@@ -19,7 +22,7 @@ var KABOOM = KABOOM || (function () {
                           '</div>',
     VFXtypes = ['acid', 'blood', 'charm', 'death', 'fire', 'frost', 'holy', 'magic', 'slime', 'smoke', 'water'],
     Layers = ['objects', 'map'],
-    defaultState = {'vfx': true, 'ignore_size': false, 'default_type': 'fire', 'same_layer_only': true, 'min_size': 1, 'max_size': 9},
+    defaultState = {'vfx': true, 'ignore_size': false, 'default_type': 'fire', 'same_layer_only': true, 'min_size': 1, 'max_size': 9, 'default_scatter': false},
     s = state.KABOOM
 
   // Run on launch
@@ -31,14 +34,16 @@ var KABOOM = KABOOM || (function () {
 /** This is the function that is exposed externally. You can call it in other
  ** scripts (as long as this is installed) with "KABOOM.NOW(param1, param2)"
  ** This function takes two parameters.
- **    1. An object containing the specifications of the explosion structured as such.
+ **    1. A single number to be used as minRange -OR- an object containing the
+ **       specifications of the explosion structured as such:
  **         object = {
  **           minRange: <any number>    // REQUIRED - Determines the min radius of the explosion
- **           maxRange: <any number>    // Not required - Determines max radius of the explosion
- **           type: <a VFX colour type> // Not required - Determines explosion's colour
+ **           maxRange: <any number>    // Not required - Defaults to minRange * explosion_ratio
+ **           type: <a VFX colour type> // Not required - Defaults to the value stored in state.
  **         }
  **
- **    2. A Roll20 graphic object -OR- an object containing the location information, structured as such.
+ **    2. An array with form [X_coordinate, Y_coordinate] -OR- a Roll20 graphic object
+ **       -OR- an object containing the location information, structured as such.
  **         object = {
  **           position: [X_coordinate, Y_coordinate]               // REQUIRED - May not be outside of map boundaries
  **           pageid: <a pageid>                                   // Not required - Defaults to the current player page
@@ -46,12 +51,11 @@ var KABOOM = KABOOM || (function () {
  **         }
  **
  ** An example function call would be:
- **   var explosionSize = { minRange: 15 }
  **   var explosionLocation = {
  **     pageid: K1-fk2ksbt7sjlsbn
  **     position: [Math.floor((Math.random()*1000) + 1), Math.floor((Math.random()*1000) + 1)]
  **   }
- **   KABOOM.NOW(explosionSize, explosionLocation)
+ **   KABOOM.NOW(15, explosionLocation)
  **
  ** What this does is create an explosion with a minimum effect range of 15 units (scales to the page),
  ** at a random location on the page (if it is within page boundaries). The explosion is by default
@@ -61,12 +65,10 @@ var KABOOM = KABOOM || (function () {
   var NOW = function (rawOptions, rawCenter) {
     var options = verifyOptions(rawOptions)
     var explosion_center = verifyObject(rawCenter)
-    if (!options.min || !explosion_center.position) return
+    if (!options.minRange || !explosion_center.position) return
     var affectedObjects = findDrawings(explosion_center)
     for (var i = 0; i < affectedObjects.length; i++) {
-      if (moveGraphic(affectedObjects[i], explosion_center, options) === 'failed') {
-        break
-      }
+      if (moveGraphic(affectedObjects[i], explosion_center, options) === 'failed') break
     }
     if (s.vfx) createExplosion(explosion_center, options.type)
   }
@@ -113,22 +115,30 @@ var KABOOM = KABOOM || (function () {
     switch (args[0]) {
       case '!KABOOM':
         var options = parseOptions(args.slice(1))
-        if (!options.hasOwnProperty('min')) return
-        if (!msg.selected) {
+        if (!options.minRange) {
+          return
+        } else if (options.minRange < 0 && options.maxRange <= 0) {
+          printToChat(msg.who, 'All implosions must have a positive max range')
+          return
+        } else if (!msg.selected) {
           printToChat(msg.who, 'Please select one token to designate the center of the explosion.')
           return
+        } else {
+          NOW(options, getObj('graphic', msg.selected[0]._id))
         }
-        // Explosion now!
-        NOW(options, getObj('graphic', msg.selected[0]._id))
     }
   }
 
   // Handles figuring out how far to throw the object and where
   var moveGraphic = function (flying_object, explosion_center, options) {
-    var obj1, obj2, d_x, d_y, distance, distance_weight, f_obj_size, item_weight, new_distance,
-      theta, new_d_x, new_d_y, new_x, new_y, page, page_scale, page_max_x, page_max_y
+    var obj1, obj2, d_x, d_y, distance, distance_weight, f_obj_size, item_weight, d_distance,
+      new_distance, theta, new_d_x, new_d_y, new_x, new_y, page, page_scale, page_max_x, page_max_y
 
     if (flying_object.id === explosion_center.id) return
+    if (options.minRange < 0 && options.maxRange < 0) {
+      log('All implosions must have a positive max range')
+      return 'failed'
+    }
 
     // Get page information
     page = getObj('page', explosion_center.pageid)
@@ -153,17 +163,26 @@ var KABOOM = KABOOM || (function () {
     // Start math calculations
     d_x = (obj2[0] - obj1[0])
     d_y = (obj2[1] - obj1[1])
+    if (d_x === 0 && d_y === 0) {
+      d_x = Math.random() * 2 - 1
+      d_y = Math.random() * 2 - 1
+    }
     distance = Math.sqrt(Math.pow(d_x, 2) + Math.pow(d_y, 2))
 
     // Calculate new distance
-    if (!options.maxRange) options.maxRange = options.minRange * explosion_ratio
     item_weight = getWeight(flying_object.get('width') * flying_object.get('height') / 4900, s.min_size, s.max_size)
-    distance_weight = getWeight(distance, options.min * page_scale, options.maxRange * page_scale)
-    if (distance_weight === 0 || item_weight === 0) return
-    new_distance = distance + (options.minRange * page_scale * distance_weight * (s.ignore_size ? 1 : item_weight))
+    distance_weight = getWeight(distance, options.minRange * page_scale, options.maxRange * page_scale)
+    if (!distance_weight || !item_weight) return
+    d_distance = options.minRange * page_scale * (distance_weight + 0.1) * (s.ignore_size ? 1 : item_weight) * (options.scatter ? Math.random() : 1)
+
+    if (options.minRange < 0 && Math.abs(d_distance) > distance) {
+      new_distance = 0
+    } else {
+      new_distance = distance + d_distance
+    }
 
     // Calculate new location
-    theta = Math.atan2(d_y, d_x)
+    theta = Math.atan2(d_y, d_x) + (Math.floor((Math.random() * 120) + 1) - 60) / 360 * Math.PI * distance_weight
     new_d_y = Math.sin(theta) * new_distance
     new_d_x = Math.cos(theta) * new_distance
     new_y = obj1[1] + new_d_y
@@ -179,12 +198,13 @@ var KABOOM = KABOOM || (function () {
 
   // Returns an object with options parsed from chat messages.
   var parseOptions = function (input) {
-    var settings_unchanged = true
-    var options = {}
-    if (parseInt(input[0], 10).toString() === input[0]) options['minRange'] = parseInt(input[0], 10)
-    if (parseInt(input[1], 10).toString() === input[1]) options['maxRange'] = parseInt(input[1], 10)
-
-    // Start Main Loop!
+    var settingsUnchanged = true
+    var options = {
+      minRange: parseInt(input[0], 10).toString() === input[0] ? parseInt(input[0], 10) : false,
+      maxRange: parseInt(input[1], 10).toString() === input[1] ? parseInt(input[1], 10) : false,
+      scatter: s.default_scatter ? true : false
+    }
+    // Cycle through the rest of the commands
     for (var i = 0; i < input.length; i++) {
       if (input[i].slice(0, 2) !== '--') continue
       // We check here if they want a specific type. Last command wins.
@@ -194,96 +214,151 @@ var KABOOM = KABOOM || (function () {
         case 'type':
           if (_.contains(VFXtypes, input[i + 1])) s.default_type = input[i + 1]
           printToChat('gm', `The default explosion type is now ${s.default_type}.`)
-          settings_unchanged = false
+          settingsUnchanged = false
           break
 
         case 'vfx':
           if (input[i + 1] === 'on') s.vfx = true
           else if (input[i + 1] === 'off') s.vfx = false
           printToChat('gm', `VFX are now ${s.vfx ? 'enabled' : 'disabled'} on explosions.`)
-          settings_unchanged = false
+          settingsUnchanged = false
           break
 
         case 'same-layer':
           if (input[i + 1] === 'on') s.same_layer_only = true
           else if (input[i + 1] === 'off') s.same_layer_only = false
           printToChat('gm', `Objects ${s.same_layer_only ? 'must be' : "don't have to be"} on the same layer as the explosion token now.`)
-          settings_unchanged = false
+          settingsUnchanged = false
+          break
+
+        case 'scatter':
+          options['scatter'] = true
+          break
+
+        case 'default-scatter':
+          if (input[i + 1] === 'on') s.default_scatter = true
+          else if (input[i + 1] === 'off') s.default_scatter = false
+          printToChat('gm', `By default scattering is ${s.same_layer_only ? 'active' : 'inactive'}.`)
+          settingsUnchanged = false
           break
 
         case 'ignore-size':
           if (input[i + 1] === 'on') s.ignore_size = true
           else if (input[i + 1] === 'off') s.ignore_size = false
           printToChat('gm', `An object's size is now ${s.ignore_size ? 'ignored' : 'included'} in distance calculations.`)
-          settings_unchanged = false
+          settingsUnchanged = false
           break
 
         case 'min-size':
           if (parseInt(input[i + 1], 10).toString() === input[i + 1]) s.min_size = parseInt(input[i + 1], 10)
           printToChat('gm', `All objects smaller than ${s.min_size} square(s) are now considered light.`)
-          settings_unchanged = false
+          settingsUnchanged = false
           break
 
         case 'max-size':
           if (parseInt(input[i + 1], 10).toString() === input[i + 1]) s.max_size = parseInt(input[i + 1], 10)
           printToChat('gm', `All objects larger than ${s.max_size} square(s) are now considered too heavy to move.`)
-          settings_unchanged = false
+          settingsUnchanged = false
           break
 
         case 'help':
           var helpRequested = true
           break
       }
-    } // End Main Loop!
-    if ((Object.keys(options).length < 1 && settings_unchanged) || helpRequested) showHelp('gm')
+    } // End Input Check Loop!
+    if ((!options.minRange && !options.maxRange && settingsUnchanged) || helpRequested) showHelp('gm')
     return options
   }
 
   var showHelp = function (target) {
-    var content = 'This is supposed to be a help menu.' +
-                  'But I forgot to add a real one.'
+    var content = '<div>' +
+                  '<strong><h1 style="text-align:center;color:#FF9900">KABOOM!</h1></strong>' +
+                  '<p style="text-align:center;font-size:75%;">The following is a list of all current settings.</p>' +
+                  '</div>' +
+                  '<div style="color:#000000;background-color:#FFCE73">' +
+                  '<hr style="background:#000000; border:0; height:7px" />' +
+                  '<ul><b>Visual Effects</b> (<b>--vfx</b>):<br>' +
+                    `${s.vfx ? 'Script creates VFX' : 'Not active'}</ul>` +
+                  '<ul><b>Default Explosion Colour</b><br> (<b>--type</b>): ' +
+                    `${s.default_type.toUpperCase()}</ul>` +
+                  '<ul><b>Affected Layers</b><br> (<b>--same-layer</b>):<br>' +
+                    `${s.same_layer_only ? 'Selected token layer only' : 'All layers'}</ul>` +
+                  '<ul><b>Scattering</b> (<b>--default-scatter</b>):<br>' +
+                    `${s.default_scatter ? 'Objects are scattered semi-randomly' : 'Objects are thrown predictably'}</ul>` +
+                  '<ul><b>Size Consideration</b><br> (<b>--ignore-size</b>):<br>' +
+                    `${s.ignore_size ? 'Object size does not affect weight' : 'Larger objects move less distance'}</ul>` +
+                  '<ul><b>Light Object Size</b><br> (<b>--min-size</b>):<br>' +
+                    `<p style="font-size:85%;">Objects ${s.min_size} square(s) or smaller are moved at maximum speed.</p></ul>` +
+                  '<ul><b>Heavy Object Size</b><br> (<b>--max-size</b>):<br>' +
+                    `<p style="font-size:85%;">Objects ${s.max_size} square(s) or larger are too heavy to move.</p></ul>` +
+                  '<hr style="background:#000000; border:0; height:7px" />' +
+                  '</div>' +
+                  '<div style="text-align:center;">' +
+                  '<p style="font-size:90%;">To use <span style="color:#FF9900">KABOOM</span> as a macro or chat command, follow this format:<br>' +
+                  '<span style="color:#888888">!KABOOM minRange maxRange --options</span></p>' +
+                  '</div>'
     printToChat(target, content)
   }
 
   // Pre-formatted sendChat function.
   var printToChat = function (target, content) {
-    sendChat('Combat Movement', `/w ${target} <br>` +
+    sendChat('KABOOM', `/w ${target} <br>` +
       Chat_Formatting_START + content + Chat_Formatting_END,
       null, {noarchive: true})
   }
 
   // ***************************************************************************
-  // This function just verifies that our options are correct
+  // This function just verifies that our options are formed correctly. It
+  // accepts either a single number, or an object with the 'minRange' property.
+  // The rest of the properties are not required.
 
   var verifyOptions = function (options) {
-    return cleanedOptions = {
-      minRange: (parseInt(options.minRange, 10) === options.minRange) ? options.minRange : false,
-      maxRange: (parseInt(options.maxRange, 10) === options.maxRange) ? options.maxRange : options.minRange * explosion_ratio,
-      type: (_.contains(VFXtypes, options.type)) ? options.type : s.default_type
+    if (parseInt(options, 10) === options) {
+      return {
+        minRange: options,
+        maxRange: options * explosion_ratio,
+        type: s.default_type,
+        scatter: false
+      }
+    } else {
+      return {
+        minRange: (parseInt(options.minRange, 10) === options.minRange) ? options.minRange : false,
+        maxRange: (parseInt(options.maxRange, 10) === options.maxRange) ? options.maxRange : options.minRange * explosion_ratio,
+        type: (_.contains(VFXtypes, options.type)) ? options.type : s.default_type,
+        scatter: options.scatter ? options.scatter : false
+      }
     }
   }
 
   // ***************************************************************************
   // We use this function to verify that the object is formatted properly for
   // our other functions. It returns an object with a coordinate array and
-  // pageid property. It only accepts objects in two forms:
-  //     1. A Roll20 token object
-  //     2. An object with a position array and pageid property
+  // pageid property. It only accepts objects in three forms:
+  //     1. An array of coordinates with form [X,Y]
+  //     2. A Roll20 token object.
+  //     3. An object with a position array and pageid property.
 
   var verifyObject = function (obj) {
-    if (typeof obj.get == 'function') {
-      return cleanObject = {
-        'position': getCoordinates(obj),
-        'pageid': obj.get('_pageid'),
-        'layer': obj.get('layer'),
-        'id': obj.id
+    if (Array.isArray(obj)){
+      return {
+        position: obj,
+        pageid: Campaign().get('playerpageid'),
+        layer: defaultLayerToAffect
+      }
+    }
+    else if (typeof obj.get == 'function') {
+      return {
+        position: getCoordinates(obj),
+        pageid: obj.get('_pageid'),
+        layer: obj.get('layer'),
+        id: obj.id
     }}
     else {
-      return cleanObject = {
-        'layer': _.contains(Layers, obj.layer) ? obj.layer : 'objects',
-        'pageid': obj.pageid ? obj.pageid : Campaign().get('playerpageid'),
-        'position': Array.isArray(obj.position) ? obj.position : false,
-        'id': false
+      return {
+        layer: _.contains(Layers, obj.layer) ? obj.layer : defaultLayerToAffect,
+        pageid: obj.pageid ? obj.pageid : Campaign().get('playerpageid'),
+        position: Array.isArray(obj.position) ? obj.position : false,
+        id: false
   }}}
 
   var registerEventHandlers = function () {
