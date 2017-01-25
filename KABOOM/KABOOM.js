@@ -40,6 +40,8 @@ var KABOOM = KABOOM || (function () {
  **           minRange: <any number>    // REQUIRED - Determines the min radius of the explosion
  **           maxRange: <any number>    // Not required - Defaults to minRange * explosion_ratio
  **           type: <a VFX colour type> // Not required - Defaults to the value stored in state.
+ **           vfx: <true or false>      // Not required - Defaults to the value stored in state.
+ **           scatter: <true or false>  // Not required - Defaults to the value stored in state.
  **         }
  **
  **    2. An array with form [X_coordinate, Y_coordinate] -OR- a Roll20 graphic object
@@ -48,6 +50,7 @@ var KABOOM = KABOOM || (function () {
  **           position: [X_coordinate, Y_coordinate]               // REQUIRED - May not be outside of map boundaries
  **           pageid: <a pageid>                                   // Not required - Defaults to the current player page
  **           layer: <the layer to search for affected objects on> // Not required - Defaults to object/token layer
+ **           id: <a token id>                                     // Not required
  **         }
  **
  ** An example function call would be:
@@ -70,7 +73,7 @@ var KABOOM = KABOOM || (function () {
     for (var i = 0; i < affectedObjects.length; i++) {
       if (moveGraphic(affectedObjects[i], explosion_center, options) === 'failed') break
     }
-    if (s.vfx) createExplosion(explosion_center, options.type)
+    if (options.vfx) createExplosion(explosion_center, options.type)
   }
 
 /****************************************************************************/
@@ -129,7 +132,9 @@ var KABOOM = KABOOM || (function () {
     }
   }
 
-  // Handles figuring out how far to throw the object and where
+  // **************************************************************************
+  // * The important function - moveGraphic handles all distance calculations *
+  // **************************************************************************
   var moveGraphic = function (flying_object, explosion_center, options) {
     var obj1, obj2, d_x, d_y, distance, distance_weight, f_obj_size, item_weight, d_distance,
       new_distance, theta, new_d_x, new_d_y, new_x, new_y, page, page_scale, page_max_x, page_max_y
@@ -142,6 +147,10 @@ var KABOOM = KABOOM || (function () {
 
     // Get page information
     page = getObj('page', explosion_center.pageid)
+    if (!page) {
+      log('Supplied pageID does not exist.')
+      return 'failed'
+    }
     page_scale = 70 / page.get('scale_number')
     page_max_x = page.get('width') * 70
     page_max_y = page.get('height') * 70
@@ -182,7 +191,7 @@ var KABOOM = KABOOM || (function () {
     }
 
     // Calculate new location
-    theta = Math.atan2(d_y, d_x) + (Math.floor((Math.random() * 120) + 1) - 60) / 360 * Math.PI * distance_weight
+    theta = Math.atan2(d_y, d_x) + (options.scatter ? (Math.floor((Math.random() * 120) + 1) - 60) / 360 * Math.PI * distance_weight : 0)
     new_d_y = Math.sin(theta) * new_distance
     new_d_x = Math.cos(theta) * new_distance
     new_y = obj1[1] + new_d_y
@@ -202,10 +211,24 @@ var KABOOM = KABOOM || (function () {
     var options = {
       minRange: parseInt(input[0], 10).toString() === input[0] ? parseInt(input[0], 10) : false,
       maxRange: parseInt(input[1], 10).toString() === input[1] ? parseInt(input[1], 10) : false,
-      scatter: s.default_scatter ? true : false
+      scatter: s.default_scatter,
+      vfx: s.vfx
     }
     // Cycle through the rest of the commands
     for (var i = 0; i < input.length; i++) {
+      switch (input[i]) {
+
+        case 'invisible':
+        case 'invis':
+        case 'no-vfx':
+        case 'no':
+          if (input[i + 1] === 'vfx') options['vfx'] = false
+          break
+
+        case 'vfx':
+          options['vfx'] = true
+          break
+      }
       if (input[i].slice(0, 2) !== '--') continue
       // We check here if they want a specific type. Last command wins.
       if (_.contains(VFXtypes, input[i].slice(2))) options['type'] = input[i].slice(2)
@@ -238,7 +261,7 @@ var KABOOM = KABOOM || (function () {
         case 'default-scatter':
           if (input[i + 1] === 'on') s.default_scatter = true
           else if (input[i + 1] === 'off') s.default_scatter = false
-          printToChat('gm', `By default scattering is ${s.same_layer_only ? 'active' : 'inactive'}.`)
+          printToChat('gm', `By default, scattering is ${s.same_layer_only ? 'active' : 'inactive'}.`)
           settingsUnchanged = false
           break
 
@@ -322,14 +345,16 @@ var KABOOM = KABOOM || (function () {
         minRange: options,
         maxRange: options * explosion_ratio,
         type: s.default_type,
-        scatter: false
+        scatter: s.default_scatter,
+        vfx: s.vfx
       }
     } else {
       return {
         minRange: (parseInt(options.minRange, 10) === options.minRange) ? options.minRange : false,
         maxRange: (parseInt(options.maxRange, 10) === options.maxRange) ? options.maxRange : options.minRange * explosion_ratio,
         type: (_.contains(VFXtypes, options.type)) ? options.type : s.default_type,
-        scatter: options.scatter ? options.scatter : false
+        scatter: (typeof options.scatter === 'boolean') ? options.scatter : s.default_scatter,
+        vfx: (typeof options.vfx === 'boolean') ? options.vfx : s.vfx
       }
     }
   }
@@ -340,14 +365,15 @@ var KABOOM = KABOOM || (function () {
   // pageid property. It only accepts objects in three forms:
   //     1. An array of coordinates with form [X,Y]
   //     2. A Roll20 token object.
-  //     3. An object with a position array and pageid property.
+  //     3. An object with a position array and other properties.
 
   var verifyObject = function (obj) {
     if (Array.isArray(obj)){
       return {
         position: obj,
         pageid: Campaign().get('playerpageid'),
-        layer: defaultLayerToAffect
+        layer: defaultLayerToAffect,
+        id: false
       }
     }
     else if (typeof obj.get == 'function') {
@@ -359,10 +385,10 @@ var KABOOM = KABOOM || (function () {
     }}
     else {
       return {
-        layer: _.contains(Layers, obj.layer) ? obj.layer : defaultLayerToAffect,
-        pageid: obj.pageid ? obj.pageid : Campaign().get('playerpageid'),
         position: Array.isArray(obj.position) ? obj.position : false,
-        id: false
+        pageid: obj.pageid ? obj.pageid : Campaign().get('playerpageid'),
+        layer: _.contains(Layers, obj.layer) ? obj.layer : defaultLayerToAffect,
+        id: obj.id ? obj.id : false
   }}}
 
   var registerEventHandlers = function () {
