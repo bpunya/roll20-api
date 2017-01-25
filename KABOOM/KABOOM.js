@@ -218,11 +218,19 @@ var KABOOM = KABOOM || (function () {
     for (var i = 0; i < input.length; i++) {
       switch (input[i]) {
 
+        case 'no-vfx':
         case 'invisible':
         case 'invis':
-        case 'no-vfx':
+          options['vfx'] = false
+          break
+
         case 'no':
           if (input[i + 1] === 'vfx') options['vfx'] = false
+          if (input[i + 1] === 'scatter') options['scatter'] = false
+          break
+
+        case 'scatter':
+          options['scatter'] = true
           break
 
         case 'vfx':
@@ -252,10 +260,6 @@ var KABOOM = KABOOM || (function () {
           else if (input[i + 1] === 'off') s.same_layer_only = false
           printToChat('gm', `Objects ${s.same_layer_only ? 'must be' : "don't have to be"} on the same layer as the explosion token now.`)
           settingsUnchanged = false
-          break
-
-        case 'scatter':
-          options['scatter'] = true
           break
 
         case 'default-scatter':
