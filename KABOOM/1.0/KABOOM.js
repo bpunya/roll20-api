@@ -5,16 +5,10 @@
 var KABOOM = KABOOM || (function () {
 
   // This script allows GMs to send things flying!
-  // !KABOOM <minRange> <maxRange> --<options>
+  // Please read the README.md found in the Roll20-api-scripts repository
 
-  var explosion_ratio = 2
-  var defaultLayerToAffect = 'objects'
-
-  // <minRange> determines the closest radius that all objects will be pushed to.
-  // <maxRange> determines the furthest an object should fly.
-  // (default is minRange * explosion_ratio)
-
-  var version = '1.0',
+  var s = state.KABOOM,
+    version = '1.0',
     lastUpdate = 1485299294,
     Chat_Formatting_START = '<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">' +
                             '<div style="border-width:2px; border-style:dotted; padding:5px">',
@@ -22,53 +16,50 @@ var KABOOM = KABOOM || (function () {
                           '</div>',
     VFXtypes = ['acid', 'blood', 'charm', 'death', 'fire', 'frost', 'holy', 'magic', 'slime', 'smoke', 'water'],
     Layers = ['objects', 'map'],
-    defaultState = {'vfx': true, 'ignore_size': false, 'default_type': 'fire', 'same_layer_only': true, 'min_size': 1, 'max_size': 9, 'default_scatter': false},
-    s = state.KABOOM
+    defaultState = {
+      'vfx': true,
+      'ignore_size': false,
+      'default_type': 'fire',
+      'same_layer_only': true,
+      'min_size': 1,
+      'max_size': 9,
+      'default_scatter': false,
+      'explosion_ratio': 2,
+      'default_layer': 'objects',
+      'gm_only': true,
+      'drawings_only': true,
+      'lastupdated': 0
+    }
 
-  // Run on launch
+  // checkVersion and checkGlobalConfig are run on startup
   var checkVersion = function () {
     if (!s) { state.KABOOM = defaultState }
+    checkGlobalConfig()
     log(`-- KABOOM v${version} -- [${new Date(lastUpdate * 1000)}]`)
   }
 
-/** This is the function that is exposed externally. You can call it in other
- ** scripts (as long as this is installed) with "KABOOM.NOW(param1, param2)"
- ** This function takes two parameters.
- **    1. A single number to be used as minRange -OR- an object containing the
- **       specifications of the explosion structured as such:
- **         object = {
- **           minRange: <any number>    // REQUIRED - Determines the min radius of the explosion
- **           maxRange: <any number>    // Not required - Defaults to minRange * explosion_ratio
- **           type: <a VFX colour type> // Not required - Defaults to the value stored in state.
- **           vfx: <true or false>      // Not required - Defaults to the value stored in state.
- **           scatter: <true or false>  // Not required - Defaults to the value stored in state.
- **         }
- **
- **    2. An array with form [X_coordinate, Y_coordinate] -OR- a Roll20 graphic object
- **       -OR- an object containing the location information, structured as such.
- **         object = {
- **           position: [X_coordinate, Y_coordinate]               // REQUIRED - May not be outside of map boundaries
- **           pageid: <a pageid>                                   // Not required - Defaults to the current player page
- **           layer: <the layer to search for affected objects on> // Not required - Defaults to object/token layer
- **           id: <a token id>                                     // Not required
- **         }
- **
- ** An example function call would be:
- **   var explosionLocation = {
- **     pageid: K1-fk2ksbt7sjlsbn
- **     position: [Math.floor((Math.random()*1000) + 1), Math.floor((Math.random()*1000) + 1)]
- **   }
- **   KABOOM.NOW(15, explosionLocation)
- **
- ** What this does is create an explosion with a minimum effect range of 15 units (scales to the page),
- ** at a random location on the page (if it is within page boundaries). The explosion is by default
- ** 'fire red', it will affect only objects on the token/object layer and the maximum range is 30 units.
- **/
+  var checkGlobalConfig = function () {
+    var g = globalconfig && globalconfig.kaboom
+    if (g && g.lastsaved && g.lastsaved > s.lastupdated) {
+      s.lastupdated = g.lastsaved
+      s.default_layer = g['Default layer to affect']
+      s.explosion_ratio = Math.abs(g['Explosion ratio'])
+      s.gm_only = g['GM only']
+      s.drawings_only = g['Affect drawings only']
+    }
+  }
+
+// This is the function that is exposed externally. You can call it in other
+// scripts (as long as this is installed) with "KABOOM.NOW(param1, param2)"
 
   var NOW = function (rawOptions, rawCenter) {
     var options = verifyOptions(rawOptions)
     var explosion_center = verifyObject(rawCenter)
     if (!options.minRange || !explosion_center.position) return
+    if (options.minRange > options.maxRange) {
+      log('Max range must always be higher than min range.')
+      return
+    }
     var affectedObjects = findDrawings(explosion_center)
     for (var i = 0; i < affectedObjects.length; i++) {
       if (moveGraphic(affectedObjects[i], explosion_center, options) === 'failed') break
@@ -76,9 +67,7 @@ var KABOOM = KABOOM || (function () {
     if (options.vfx) createExplosion(explosion_center, options.type)
   }
 
-/****************************************************************************/
 /*********************** END OF EXPOSED FUNCTION ****************************/
-/****************************************************************************/
 
   // Creates the explosion VFX
   var createExplosion = function (explosion_center, explosion_type) {
@@ -88,12 +77,20 @@ var KABOOM = KABOOM || (function () {
 
   // Returns an array of all valid drawings to move
   var findDrawings = function (explosion_center) {
-    return findObjs({
-      '_type': 'graphic',
-      '_pageid': explosion_center.pageid,
-      'isdrawing': true,
-      'layer': s.same_layer_only ? explosion_center.layer : true
-    })
+    if (s.drawings_only) {
+      return findObjs({
+        '_type': 'graphic',
+        '_pageid': explosion_center.pageid,
+        'isdrawing': true,
+        'layer': s.same_layer_only ? explosion_center.layer : true
+      })
+    } else {
+      return findObjs({
+        '_type': 'graphic',
+        '_pageid': explosion_center.pageid,
+        'layer': s.same_layer_only ? explosion_center.layer : true
+      })
+    }
   }
 
   // Returns an array of the input object's coordinates
@@ -113,15 +110,19 @@ var KABOOM = KABOOM || (function () {
 
   // Handles chat input
   var handleChatInput = function (msg) {
-    if (msg.type !== 'api' || !playerIsGM(msg.playerid)) return
+    if (msg.type !== 'api' || (s.gm_only && !playerIsGM(msg.playerid))) return
     var args = msg.content.split(/\s/)
     switch (args[0]) {
+      case '!kaboom':
       case '!KABOOM':
         var options = parseOptions(args.slice(1))
         if (!options.minRange) {
           return
         } else if (options.minRange < 0 && options.maxRange <= 0) {
           printToChat(msg.who, 'All implosions must have a positive max range')
+          return
+        } else if (options.maxRange && (options.minRange > options.maxRange)) {
+          printToChat(msg.who, 'Maximum range must be higher than the minimum range')
           return
         } else if (!msg.selected) {
           printToChat(msg.who, 'Please select one token to designate the center of the explosion.')
@@ -182,7 +183,7 @@ var KABOOM = KABOOM || (function () {
     item_weight = getWeight(flying_object.get('width') * flying_object.get('height') / 4900, s.min_size, s.max_size)
     distance_weight = getWeight(distance, options.minRange * page_scale, options.maxRange * page_scale)
     if (!distance_weight || !item_weight) return
-    d_distance = options.minRange * page_scale * (distance_weight + 0.1) * (s.ignore_size ? 1 : item_weight) * (options.scatter ? Math.random() : 1)
+    d_distance = options.minRange * page_scale * (distance_weight + 0.2 - 0.2 * distance_weight) * (s.ignore_size ? 1 : item_weight) * (options.scatter ? Math.random() : 1)
 
     if (options.minRange < 0 && Math.abs(d_distance) > distance) {
       new_distance = 0
@@ -347,7 +348,7 @@ var KABOOM = KABOOM || (function () {
     if (parseInt(options, 10) === options) {
       return {
         minRange: options,
-        maxRange: options * explosion_ratio,
+        maxRange: Math.abs(options * s.explosion_ratio),
         type: s.default_type,
         scatter: s.default_scatter,
         vfx: s.vfx
@@ -355,7 +356,7 @@ var KABOOM = KABOOM || (function () {
     } else {
       return {
         minRange: (parseInt(options.minRange, 10) === options.minRange) ? options.minRange : false,
-        maxRange: (parseInt(options.maxRange, 10) === options.maxRange) ? options.maxRange : options.minRange * explosion_ratio,
+        maxRange: (parseInt(options.maxRange, 10) === options.maxRange) ? options.maxRange : Math.abs(options.minRange * s.explosion_ratio),
         type: (_.contains(VFXtypes, options.type)) ? options.type : s.default_type,
         scatter: (typeof options.scatter === 'boolean') ? options.scatter : s.default_scatter,
         vfx: (typeof options.vfx === 'boolean') ? options.vfx : s.vfx
@@ -376,7 +377,7 @@ var KABOOM = KABOOM || (function () {
       return {
         position: obj,
         pageid: Campaign().get('playerpageid'),
-        layer: defaultLayerToAffect,
+        layer: s.default_layer,
         id: false
       }
     }
@@ -391,7 +392,7 @@ var KABOOM = KABOOM || (function () {
       return {
         position: Array.isArray(obj.position) ? obj.position : false,
         pageid: obj.pageid ? obj.pageid : Campaign().get('playerpageid'),
-        layer: _.contains(Layers, obj.layer) ? obj.layer : defaultLayerToAffect,
+        layer: _.contains(Layers, obj.layer) ? obj.layer : s.default_layer,
         id: obj.id ? obj.id : false
   }}}
 
