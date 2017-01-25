@@ -20,16 +20,17 @@ The basic chat command follows this format:
 When you use KABOOM as a chat command, you need to have a token selected. ONLY minimum range is required.
 Everything else is optional.
 
-*<minimum-range>* is the minimum distance that everything should be shoved away by. This can be negative
+**minimum-range** is the minimum distance that everything should be shoved away by. This can be negative
                 if you want to pull things towards the object instead of pushing away.
 
-*<maximum-range>* is the maximum distance that the script search for objects to manipulate. If something is
-                beyond this point, it will not move. Defaults to <minimum range> * explosion_ratio
+**maximum-range** is the maximum distance that the script search for objects to manipulate. If something is
+                beyond this point, it will not move. Defaults to **minimum range * explosion_ratio**. This
+                must be positive if minimum-range is negative.
 
-*<options>* are either 'vfx', 'no-vfx', 'invisible', 'invis' to change whether an explosion effect appears,
-          or 'scatter' if you want to scatter tokens away from the explosion/implosion point more randomly.
+**options** are either 'vfx', 'no vfx', 'no-vfx', 'invisible', 'invis' to change whether an explosion effect appears,
+          or 'scatter' and 'no scatter' if you want to scatter tokens away from the explosion/implosion point more randomly.
 
-*<more-options>* can be found in the help menu, which is reached by typing "!KABOOM" or "!KABOOM --help" into chat.
+**--default-options** can be found in the help menu, which is reached by typing "!KABOOM" or "!KABOOM --help" into chat.
 
 ###Through the API:
 The simplest function call looks something like this:
