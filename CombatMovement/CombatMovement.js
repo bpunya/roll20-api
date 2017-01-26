@@ -1,4 +1,4 @@
-// Github: https://github.com/bpunya/roll20-api/blob/master/BackwaterCampaign/CombatMovement.js
+// Github: https://github.com/bpunya/roll20-api/blob/master/CombatMovement/CombatMovement.js
 // Author: PaprikaCC (Bodin Punyaprateep)
 /******************************************************************************/
 

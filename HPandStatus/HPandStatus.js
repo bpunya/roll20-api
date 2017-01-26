@@ -1,4 +1,4 @@
-// Github: https://github.com/bpunya/roll20-api/blob/master/BackwaterCampaign/HPandStatus.js
+// Github: https://github.com/bpunya/roll20-api/blob/master/HPandStatus/HPandStatus.js
 // Author: PaprikaCC (Bodin Punyaprateep)
 
 // This script was adapted from the one originally created by The Aaron.
@@ -36,7 +36,7 @@ var HPandStatus = HPandStatus || (function () {
 
     getHP = function (obj, prev) {
       if (!prev) prev = obj
-      var isPC = (obj.get('represents') !== '' || getAttrByName(obj.get('represents'), Is_NPC_Attribute) === '0')
+      var isPC = (obj.get('represents') !== '' || !getAttrByName(obj.get('represents'), Is_NPC_Attribute))
       var HP = {
         now: parseInt(obj.get(CurrentHP), 10) || 0,
         old: parseInt(prev[CurrentHP], 10) || 0,
@@ -89,10 +89,9 @@ var HPandStatus = HPandStatus || (function () {
         HP.now = HP.dead
         removeTurn(obj)
       }
-      var tokenStats = {
-        [CurrentHP]: HP.now
-      }
-      obj.set(Object.assign(tokenStats, statusCheck(HP)))
+
+      // Put everything together~
+      obj.set(Object.assign({CurrentHP: HP.now}, statusCheck(HP)))
     },
 
     onStatusChange = function (obj, prev) {
@@ -106,7 +105,7 @@ var HPandStatus = HPandStatus || (function () {
     },
 
     statusCheck = function (HP) {
-      return updatedToken = {
+      return {
         ['status_' + BloodiedMarker]: (HP.now > HP.dead && HP.now <= HP.bloodied),
         ['status_' + DyingMarker]: (HP.now > HP.dead && HP.now <= 0),
         ['status_' + DeadMarker]: (HP.now <= HP.dead)
