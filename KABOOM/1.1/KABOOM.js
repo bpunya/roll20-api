@@ -189,7 +189,7 @@ var KABOOM = KABOOM || (function () {
   // * The important function - moveGraphic handles all distance calculations *
   // **************************************************************************
   var moveGraphic = function (flying_object, explosion_center, options, page, walls) {
-    var obj1, obj2, d_x, d_y, distance, distance_weight, f_obj_size, item_weight, d_distance,
+    var obj1, obj2, d_x, d_y, distance, distance_weight, item_weight, d_distance,
       movement_vector, new_distance, theta, new_d_x, new_d_y, new_x, new_y, intersect
 
     if (flying_object.id === explosion_center.id) return
@@ -389,11 +389,6 @@ var KABOOM = KABOOM || (function () {
           else if (input[i + 1] === 'off') state.KABOOM.walls_stop_movement = false
           printToChat('gm', `The script now ${state.KABOOM.walls_stop_movement ? 'observes' : 'ignores'} walls when calculating movement.`)
           break
-
-        case 'walls':
-          if (input[i + 1] === 'on') state.KABOOM.walls_stop_movement = true
-          else if (input[i + 1] === 'off') state.KABOOM.walls_stop_movement = false
-          printToChat('gm', `The script now ${state.KABOOM.walls_stop_movement ? 'observes' : 'ignores'} walls when calculating movement.`)
 
         case 'help':
           showHelp('gm')
