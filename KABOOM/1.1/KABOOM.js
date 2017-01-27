@@ -139,6 +139,16 @@ var KABOOM = KABOOM || (function () {
     return [obj.get('left'), obj.get('top')]
   }
 
+  var getPageInfo = function (pageid) {
+    var page = getObj('page', pageid)
+    if (!page) return
+    return {
+      scale: 70 / page.get('scale_number'),
+      max_x: page.get('width') * 70,
+      max_y: page.get('height') * 70
+    }
+  }
+
   var getRandomInt = function (min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min
   }
@@ -178,21 +188,11 @@ var KABOOM = KABOOM || (function () {
   // **************************************************************************
   // * The important function - moveGraphic handles all distance calculations *
   // **************************************************************************
-  var moveGraphic = function (flying_object, explosion_center, options, walls) {
-    var obj1, obj2, d_x, d_y, distance, distance_weight, f_obj_size, item_weight, d_distance, movement_vector,
-      new_distance, theta, new_d_x, new_d_y, new_x, new_y, page, page_scale, page_max_x, page_max_y, intersect
+  var moveGraphic = function (flying_object, explosion_center, options, page, walls) {
+    var obj1, obj2, d_x, d_y, distance, distance_weight, f_obj_size, item_weight, d_distance,
+      movement_vector, new_distance, theta, new_d_x, new_d_y, new_x, new_y, intersect
 
     if (flying_object.id === explosion_center.id) return
-
-    // Get page information
-    page = getObj('page', explosion_center.pageid)
-    if (!page) {
-      log('KABOOM - PageID supplied does not exist.')
-      return 'failed'
-    }
-    page_scale = 70 / page.get('scale_number')
-    page_max_x = page.get('width') * 70
-    page_max_y = page.get('height') * 70
 
     // Separate objects from coords
     obj1 = explosion_center.position
@@ -206,9 +206,9 @@ var KABOOM = KABOOM || (function () {
 
     // ARE OUR COORDS OKAY?
     if (obj1[0] < 0 || obj1[1] < 0 ||
-      obj1[0] > page_max_x || obj1[1] > page_max_y ||
+      obj1[0] > page.max_x || obj1[1] > page.max_y ||
       obj2[0] < 0 || obj2[1] < 0 ||
-      obj2[0] > page_max_x || obj2[1] > page_max_y)
+      obj2[0] > page.max_x || obj2[1] > page.max_y)
     {
       log('KABOOM - Coordinate information is out of bounds.')
       return 'failed'
@@ -225,9 +225,9 @@ var KABOOM = KABOOM || (function () {
 
     // Calculate new distance
     item_weight = getWeight(flying_object.get('width') * flying_object.get('height') / 4900, state.KABOOM.min_size, state.KABOOM.max_size)
-    distance_weight = getWeight(distance, Math.abs(options.effectPower * page_scale), options.effectRadius * page_scale)
+    distance_weight = getWeight(distance, Math.abs(options.effectPower * page.scale), options.effectRadius * page.scale)
     if (!distance_weight || !item_weight) return
-    d_distance = options.effectPower * page_scale
+    d_distance = options.effectPower * page.scale
                 * (distance_weight + 0.2 - 0.2 * distance_weight)
                 * (state.KABOOM.ignore_size ? 1 : item_weight)
                 * (options.scatter ? getRandomInt(50, 100) / 100 : 1)
@@ -252,10 +252,9 @@ var KABOOM = KABOOM || (function () {
     new_y = movement_vector[1]
 
     // QA STUFF HERE
-    new_x = new_x > page_max_x ? page_max_x : new_x < 0 ? 0 : new_x
-    new_y = new_y > page_max_y ? page_max_y : new_y < 0 ? 0 : new_y
+    new_x = new_x > page.max_x ? page.max_x : new_x < 0 ? 0 : new_x
+    new_y = new_y > page.max_y ? page.max_y : new_y < 0 ? 0 : new_y
 
-    // Rotation for fun.
     flying_object.set({'left': new_x, 'top': new_y})
   }
 
@@ -263,18 +262,30 @@ var KABOOM = KABOOM || (function () {
 // scripts (as long as this is installed) with "KABOOM.NOW(param1, param2)"
 
   var prepareExplosion = function (rawOptions, rawCenter) {
-    var options, explosion_center, affectedObjects, walls
-    options = verifyOptions(rawOptions)
-    explosion_center = verifyObject(rawCenter)
-    if (!options.effectPower || !explosion_center.position) return
-    if (options.effectPower > options.effectRadius) {
+    // Check if our inputs are valid
+    var options = verifyOptions(rawOptions)
+    var explosion_center = verifyObject(rawCenter)
+    var pageInfo = getPageInfo(explosion_center.pageid)
+
+    // Error checking for API users
+    if (!options.effectPower || !explosion_center.position) {
+      log('KABOOM - Effect power and/or explosion center missing.')
+      return
+    } else if (options.effectPower > options.effectRadius) {
       log('KABOOM - Effect radius must always be higher than effect power.')
       return
+    } else if (!pageInfo) {
+      log('KABOOM - Pageid supplied does not exist.')
+      return
     }
-    affectedObjects = findGraphics(explosion_center)
-    walls = findWalls(explosion_center.pageid)
+
+    // findObjs arrays here
+    var affectedObjects = findGraphics(explosion_center)
+    var walls = state.KABOOM.walls_stop_movement
+      ? findWalls(explosion_center.pageid)
+      : false
     for (var i = 0; i < affectedObjects.length; i++) {
-      if (moveGraphic(affectedObjects[i], explosion_center, options, walls) === 'failed') break
+      if (moveGraphic(affectedObjects[i], explosion_center, options, pageInfo, walls) === 'failed') break
     }
     if (options.vfx) createExplosion(explosion_center, options)
   }
@@ -288,7 +299,6 @@ var KABOOM = KABOOM || (function () {
       effectPower: parseInt(input[0], 10).toString() === input[0] ? parseInt(input[0], 10) : undefined,
       effectRadius: parseInt(input[1], 10).toString() === input[1] ? parseInt(input[1], 10) : undefined
     }
-    // Cycle through the rest of the commands
     for (var i = 0; i < input.length; i++) {
       // This switch is for explosion specific things
       switch (input[i]) {
@@ -306,6 +316,7 @@ var KABOOM = KABOOM || (function () {
 
         case 'no-scatter':
           options['scatter'] = false
+          break
 
         case 'scatter':
           options['scatter'] = true
@@ -322,25 +333,21 @@ var KABOOM = KABOOM || (function () {
       if (_.contains(VFXtypes, input[i].slice(2))) options['type'] = input[i].slice(2)
       switch (input[i].slice(2)) {
 
-        case 'only-drawings':
         case 'drawings-only':
           if (input[i + 1] === 'on') state.KABOOM.drawings_only = true
           else if (input[i + 1] === 'off') state.KABOOM.drawings_only = false
           printToChat('gm', `Explosions will now move ${state.KABOOM.drawings_only ? 'only tokens labeled as drawings' : 'all tokens'}.`)
-          settingsUnchanged = false
           break
 
         case 'type':
           if (_.contains(VFXtypes, input[i + 1])) state.KABOOM.default_type = input[i + 1]
           printToChat('gm', `The default explosion type is now ${state.KABOOM.default_type}.`)
-          settingsUnchanged = false
           break
 
         case 'vfx':
           if (input[i + 1] === 'on') state.KABOOM.vfx = true
           else if (input[i + 1] === 'off') state.KABOOM.vfx = false
           printToChat('gm', `VFX are now ${state.KABOOM.vfx ? 'enabled' : 'disabled'} on explosions.`)
-          settingsUnchanged = false
           break
 
         case 'same-layer':
@@ -354,39 +361,33 @@ var KABOOM = KABOOM || (function () {
           if (input[i + 1] === 'on') state.KABOOM.scattering = true
           else if (input[i + 1] === 'off') state.KABOOM.scattering = false
           printToChat('gm', `By default, scattering is ${state.KABOOM.scattering ? 'active' : 'inactive'}.`)
-          settingsUnchanged = false
           break
 
         case 'ignore-size':
           if (input[i + 1] === 'on') state.KABOOM.ignore_size = true
           else if (input[i + 1] === 'off') state.KABOOM.ignore_size = false
           printToChat('gm', `An object's size is now ${state.KABOOM.ignore_size ? 'ignored' : 'included'} in distance calculations.`)
-          settingsUnchanged = false
           break
 
         case 'min-size':
           if (parseInt(input[i + 1], 10).toString() === input[i + 1]) state.KABOOM.min_size = parseInt(input[i + 1], 10)
           printToChat('gm', `All objects smaller than ${state.KABOOM.min_size} square(s) are now considered light.`)
-          settingsUnchanged = false
           break
 
         case 'max-size':
           if (parseInt(input[i + 1], 10).toString() === input[i + 1]) state.KABOOM.max_size = parseInt(input[i + 1], 10)
           printToChat('gm', `All objects larger than ${state.KABOOM.max_size} square(s) are now considered too heavy to move.`)
-          settingsUnchanged = false
           break
 
         case 'reset':
           state.KABOOM = defaultState
           printToChat('gm', `KABOOM has reset its internal state.`)
-          settingsUnchanged = false
           break
 
         case 'walls':
           if (input[i + 1] === 'on') state.KABOOM.walls_stop_movement = true
           else if (input[i + 1] === 'off') state.KABOOM.walls_stop_movement = false
           printToChat('gm', `The script now ${state.KABOOM.walls_stop_movement ? 'observes' : 'ignores'} walls when calculating movement.`)
-          settingsUnchanged = false
           break
 
         case 'walls':
