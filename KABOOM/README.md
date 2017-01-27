@@ -98,6 +98,7 @@ Make sure that same-layer-only is true if this is false, or you may move your ba
 
 ###--default_type
 This option determines the colour of the VFX explosion if none is specified. The colours available are:
+'acid', 'blood', 'charm', 'death', 'fire', 'frost', 'holy', 'magic', 'slime', 'smoke', and 'water'
 
 ###-same_layer_only
 By default, this script does not affect objects on other layers. If this is false
