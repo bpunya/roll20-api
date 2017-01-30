@@ -11,7 +11,6 @@ Ever wonder why the tokens inside of your flimsy straw houses never budge when y
 
 ##How do I use it?
 You can call KABOOM through chat with a simple message, or you can use it with other scripts by calling KABOOM.NOW()!
-You may only pass integers to KABOOM, otherwise the script will reject inputs. This is the case for both chat commands and API calls.
 
 ###Example chat message:
 !kaboom -15 50 no scatter --blood
