@@ -9,7 +9,7 @@ var KABOOM = KABOOM || (function () {
   // Please read the README.md found in the Roll20-api-scripts repository
 
   var version = '1.2',
-    lastUpdate = 1487571289,
+    lastUpdate = 1487619046,
 
     VFXtypes = {
       'acid': {
@@ -79,7 +79,7 @@ var KABOOM = KABOOM || (function () {
         "endColour":		[10, 10, 100, 0],
         "endColourRandom":	[10, 10, 25, 0]
       }
-    }
+    },
     Layers = ['objects', 'map'],
     defaultState = {
       'vfx': true,
@@ -146,22 +146,9 @@ var KABOOM = KABOOM || (function () {
 
   // Handles VFX and prepares movement
   var createExplosion = function (explosion, options, pageInfo) {
-    var scale = pageInfo.scale * Math.abs(options.effectPower) / 140 > 0.5
-      ? pageInfo.scale * Math.abs(options.effectPower) / 140 : 0.5
-    base = {
-      "maxParticles": 300,
-      "duration": 1,
-	  "lifeSpan": 15,
-	  "lifeSpanRandom": 3.5,
-	  "angle": 0,
-	  "angleRandom": 360,
-	  "emissionRate": 300,
-      "size": 35 * scale,
-      "sizeRandom": 10 * scale,
-      "speed": 10 * scale,
-      "speedRandom": 2 * scale
-    },
-    VFXdata = Object.assign(base, VFXtypes[options.type])
+    var scale = pageInfo.scale * Math.abs(options.effectPower) / 70
+    var sparcity = options.effectRadius / Math.abs(options.effectPower) / state.KABOOM.explosion_ratio
+    var VFXdata = getExplosionVFX(options.type, scale, sparcity)
     spawnFxWithDefinition(explosion.position[0], explosion.position[1], VFXdata, explosion.pageid)
   }
 
@@ -217,6 +204,31 @@ var KABOOM = KABOOM || (function () {
   // Returns an array of the input object's coordinates
   var getCoordinates = function (obj) {
     return [obj.get('left'), obj.get('top')]
+  }
+
+// Exposed through KABOOM.getExplosionVFX(@param1, @param2, @param3)
+// Return an object to use with spawnFxWithDefinition()
+// @param1 is a all colour data. You can use built in values by passing a string with the name of the value, or an custom VFX object.
+// @param2 is a radius in units on the tabletop.
+// @param3 is a sparcity value. Using 1 as a base, higher values reduces the amount of particles created.
+  var getExplosionVFX = function (type, radius, sparcity) {
+    radius = Math.abs(radius) || 2
+    sparcity = Math.abs(sparcity) || 1
+    var base = {
+      "maxParticles": 300 / sparcity,
+      "emissionRate": 300 / sparcity,
+      "duration": 1,
+	  "lifeSpan": 15,
+	  "lifeSpanRandom": 3.5,
+	  "angle": 0,
+	  "angleRandom": 360,
+      "size": 17.5 * radius * (1 + sparcity) / 2,
+      "sizeRandom": 5 * radius * (1 + sparcity) / 2,
+      "speed": 5 * radius * sparcity,
+      "speedRandom": radius * sparcity / 2
+    }
+    var colour = type.startColour ? type : VFXtypes[type]
+    return Object.assign(base, colour)
   }
 
   // Returns a neat object with page properties
@@ -455,9 +467,10 @@ var KABOOM = KABOOM || (function () {
     return options
   }
 
-// This is the function that is exposed externally. You can call it in other
-// scripts (as long as this is installed) with "KABOOM.NOW(param1, param2)"
-
+// Exposed externally through KABOOM.NOW(@param1, @param2)
+// Returns no value
+// @param1 must contain the property 'effectPower'
+// @param2 must contain the property 'position' as an array value
   var prepareExplosion = function (rawOptions, rawCenter) {
     // Check if our inputs are valid
     var options = verifyOptions(rawOptions)
@@ -615,6 +628,7 @@ var KABOOM = KABOOM || (function () {
   }
 
   return {
+    getExplosionVFX: getExplosionVFX,
     NOW: prepareExplosion,
     CheckVersion: checkVersion,
     RegisterEventHandlers: registerEventHandlers
