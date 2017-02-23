@@ -71,7 +71,6 @@ var KABOOM = KABOOM || (function () {
         "startColourRandom":[10, 10, 10, 0.5],
         "endColour":		[200, 200, 200, 0],
         "endColourRandom":	[10, 10, 10, 0]
-
       },
       'water': {
         "startColour":		[15, 15, 150, 1],
@@ -189,14 +188,12 @@ var KABOOM = KABOOM || (function () {
 
   var getCollisionPoint = function (pathToMove, walls) {
     var intersect, closestIntersect, intersectArray = []
-    // For each object in the walls array...
-    for (var a = 0; a < walls.length; a++) {
-      // For each path segment of each object...
-      for (var b = 0; b < walls[a].length - 1; b++) {
-        intersect = PathMath.segmentIntersection(pathToMove, [walls[a][b], walls[a][b + 1]])
+    _.each(walls, function (wall) {
+      for (var a = 0; a < wall.length - 1; a++) {
+        intersect = PathMath.segmentIntersection(pathToMove, [wall[a], wall[a + 1]])
         if (intersect) intersectArray.push(intersect)
       }
-    }
+    })
     closestIntersect = _.chain(intersectArray).sortBy(value => value[1]).first().value()
     return closestIntersect
   }
@@ -264,13 +261,9 @@ var KABOOM = KABOOM || (function () {
       case '!KABOOM':
         if (args.length === 1) { showHelp(msg.who); return }
         var options = parseOptions(args, playerIsGM(msg.playerid))
-        var graphic = false
-        // Find out where the graphic is specified
-        if (msg.selected) {
-          graphic = getObj('graphic', msg.selected[0]._id)
-        } else {
-          graphic = getObj('graphic', _.find(args, id => getObj('graphic', id)))
-        }
+        var graphic = msg.selected
+          ? getObj('graphic', msg.selected[0]._id)
+          : getObj('graphic', _.find(args, id => getObj('graphic', id)))
         // Error checking!
         if (!options.effectPower) {
           return
@@ -332,11 +325,8 @@ var KABOOM = KABOOM || (function () {
     if (d_distance === 0) return
 
     // If moving towards a point, don't overshoot it
-    if (options.effectPower < 0 && Math.abs(d_distance) > distance) {
-      new_distance = 0
-    } else {
-      new_distance = distance + d_distance
-    }
+    new_distance = (options.effectPower < 0 && Math.abs(d_distance) > distance)
+      ? 0 : distance + d_distance
 
     // Calculate new location
     theta = Math.atan2(d_y, d_x) + (options.scatter ? (getRandomInt(0, 60) - 30) / 360 * Math.PI * distance_weight : 0)
@@ -505,6 +495,9 @@ var KABOOM = KABOOM || (function () {
       } else {
         createExplosion(explosion_center, options, pageInfo)
         setTimeout(function() {
+          createExplosion(explosion_center, options, pageInfo)
+        }, 100)
+        setTimeout(function() {
           _.each(affectedObjects, object => moveGraphic(object, explosion_center, options, pageInfo, walls))
         }, 500)
       }
@@ -583,7 +576,7 @@ var KABOOM = KABOOM || (function () {
           ? options.effectPower : false,
         effectRadius: (parseFloat(options.effectRadius) === options.effectRadius)
           ? Math.abs(options.effectRadius) : Math.abs(options.effectPower * state.KABOOM.explosion_ratio),
-        type: (_.contains(Object.keys(VFXtypes), options.type))
+        type: (_.contains(Object.keys(VFXtypes), options.type) || (options.type.startColour && options.type.startColour.length === 4))
           ? options.type : state.KABOOM.default_type,
         scatter: (typeof options.scatter === 'boolean')
           ? options.scatter : state.KABOOM.scattering,
