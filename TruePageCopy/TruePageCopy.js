@@ -13,7 +13,7 @@ var TruePageCopy = TruePageCopy || (function () {
   var checkExistingWork = function () {
     if (state.PageCopy.workQueue.length) {
       printToChat('gm', `Continuing interrupted copying of ${getObj('page', state.PageCopy.sourcePage).get('name')}`)
-      if(copyObjectsToDestination() === 'success') clearState()
+      copyObjectsToDestination(clearState)
     } else if (state.PageCopy.active) {
       clearState()
     }
@@ -63,7 +63,7 @@ var TruePageCopy = TruePageCopy || (function () {
     printToChat(target, output)
   }
 
-  var copyObjectsToDestination = function () {
+  var copyObjectsToDestination = function (callback) {
     var workQueue = () => {
       if (state.PageCopy.workQueue.length) {
         var part = state.PageCopy.workQueue.shift()
@@ -71,10 +71,10 @@ var TruePageCopy = TruePageCopy || (function () {
         _.defer(workQueue)
       } else {
         printToChat('gm', `Finished copying the ${getObj('page', state.PageCopy.sourcePage).get('name')} page.`)
-        return 'success'
+        callback()
       }
     }
-    if (workQueue() === 'success') return 'success'
+    workQueue()
   }
 
   var findGraphics = function (page1, page2) {
@@ -86,7 +86,8 @@ var TruePageCopy = TruePageCopy || (function () {
       rawSortedObjs.push(objsToCopy[_.indexOf(objsToCopyIds, id)])
     })
     var sortedObjs = orderedObjs === [''] ? rawSortedObjs.filter((o) => o) : objsToCopy
-    return prepareObjects(sortedObjs, page2.id)
+    var preparedObjs = prepareObjects(sortedObjs, page2.id)
+    return preparedObjs
   }
 
   var getGmPage = function (playerName) {
@@ -279,9 +280,7 @@ var TruePageCopy = TruePageCopy || (function () {
     printToChat('gm', `Script is now active and copying objects from the ${originalPage.get('name')} page.`)
     changeDestinationPage(originalPage, destinationPage)
     state.PageCopy.workQueue = findGraphics(originalPage, destinationPage)
-    if (copyObjectsToDestination() === 'success') {
-      _.defer(clearState())
-    }
+    copyObjectsToDestination(clearState)
   }
 
   var showHelp = function () {
@@ -307,11 +306,11 @@ var TruePageCopy = TruePageCopy || (function () {
     CheckInstall: checkVersion,
     RegisterEventHandlers: registerEventHandlers
   }
-}())
+}());
 
 on('ready', function () {
   "use strict";
-  TruePageCopy.CheckWork()
   TruePageCopy.CheckInstall()
   TruePageCopy.RegisterEventHandlers()
-})
+  TruePageCopy.CheckWork()
+});
