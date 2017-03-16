@@ -68,7 +68,7 @@ var TruePageCopy = TruePageCopy || (function () {
       if (state.PageCopy.workQueue.length) {
         var part = state.PageCopy.workQueue.shift()
         createObj(part.type, part.data)
-        _.delay(workQueue, 10)
+        _.defer(workQueue)
       } else {
         printToChat('gm', `Finished copying the ${getObj('page', state.PageCopy.sourcePage).get('name')} page.`)
         return 'success'
@@ -207,7 +207,8 @@ var TruePageCopy = TruePageCopy || (function () {
           } else if (!state.PageCopy.sourcePage) {
             state.PageCopy.sourcePage = getGmPage(target)
             printToChat(target, `Setting the source page to ${state.PageCopy.sourcePage}`)
-          } else if (state.PageCopy.sourcePage === state.PageCopy.destinationPage) {
+          } else if (state.PageCopy.sourcePage === state.PageCopy.destinationPage ||
+                     state.PageCopy.sourcePage === getGmPage(target)) {
             printToChat(target, 'You must select a different source and destination page.')
           } else {
             state.PageCopy.destinationPage = getGmPage(target)
@@ -278,9 +279,8 @@ var TruePageCopy = TruePageCopy || (function () {
     printToChat('gm', `Script is now active and copying objects from the ${originalPage.get('name')} page.`)
     changeDestinationPage(originalPage, destinationPage)
     state.PageCopy.workQueue = findGraphics(originalPage, destinationPage)
-    log(state.PageCopy)
     if (copyObjectsToDestination() === 'success') {
-      clearState()
+      _.defer(clearState())
     }
   }
 
