@@ -207,7 +207,7 @@ var TruePageCopy = TruePageCopy || (function () {
             return
           } else if (!state.PageCopy.sourcePage) {
             state.PageCopy.sourcePage = getGmPage(target)
-            printToChat(target, `Setting the source page to ${state.PageCopy.sourcePage}`)
+            printToChat(target, `Setting the source page to ${getObj('page', getGmPage(target)).get('name')}`)
           } else if (state.PageCopy.sourcePage === state.PageCopy.destinationPage ||
                      state.PageCopy.sourcePage === getGmPage(target)) {
             printToChat(target, 'You must select a different source and destination page.')
@@ -233,7 +233,7 @@ var TruePageCopy = TruePageCopy || (function () {
 
             case 'source':
               state.PageCopy.sourcePage = getGmPage(target)
-              printToChat(target, `Setting the source page to ${state.PageCopy.sourcePage}`)
+              printToChat(target, `Setting the source page to ${getObj('page', getGmPage(target)).get('name')}`)
               break
 
             case 'help':
