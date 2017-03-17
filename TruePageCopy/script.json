@@ -9,8 +9,9 @@
     "roll20userid": "558646",
     "dependencies": [],
     "modifies": {
-        "graphic": "read, write",
-        "state.PageCopy": "read, write"
+        "graphic.*": "read, write",
+        "text.*": "read, write",
+        "path.*": "read, write"
     },
     "conflicts": []
 }
