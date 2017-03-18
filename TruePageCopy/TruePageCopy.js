@@ -25,7 +25,7 @@ const TruePageCopy = TruePageCopy || (function () {
       secureStr: false,
       sourcePage: false,
       destinationPage: false,
-      dupPageArr: state.PageCopy.dupPageArr || [],
+      deletedPages: state.PageCopy.deletedPages || [],
       workQueue: [],
     };
   };
@@ -260,22 +260,23 @@ const TruePageCopy = TruePageCopy || (function () {
   };
 
   const handlePageCreation = function (obj) {
-    if (!_.contains(state.PageCopy.dupPageArr, obj.id) && obj.get('_zorder')) {
-      const sourceMap = _.chain(findObjs({ type: 'page' }))
-                        .filter(map => `${map.get('name')} (Copy)` === obj.get('name'))
-                        .map(map => ({ id: map.id, data: getPageInfo(map) }))
-                        .filter(map => _.isEqual(map.data, getPageInfo(obj)))
+    if (!_.contains(state.PageCopy.deletedPages, obj.id)) {
+      const sourcePage = _.chain(findObjs({ type: 'page' }))
+                        .filter(page => `${page.get('name')} (Copy)` === obj.get('name'))
+                        .filter(page => page.get('_zorder') === obj.get('_zorder'))
+                        .filter(page => _.isEqual(getPageInfo(page), getPageInfo(obj)))
                         .first()
                         .value();
-      if (sourceMap && findGraphics(getObj('page', sourceMap.id))) preparePageCopy(sourceMap.id, obj.id);
+      if (sourcePage && findGraphics(sourcePage)) preparePageCopy(sourcePage.id, obj.id);
     }
   };
 
   const handlePageDestruction = function (obj) {
-    if (state.PageCopy.dupPageArr.length > 10) {
-      state.PageCopy.dupPageArr.shift();
-    } else if (!_.contains(state.PageCopy.dupPageArr, obj.id)) {
-      state.PageCopy.dupPageArr.push(obj.id);
+    if (state.PageCopy.deletedPages.length >= 10) {
+      state.PageCopy.deletedPages.shift();
+    }
+    if (!_.contains(state.PageCopy.deletedPages, obj.id)) {
+      state.PageCopy.deletedPages.push(obj.id);
     }
   };
 
@@ -304,7 +305,7 @@ const TruePageCopy = TruePageCopy || (function () {
     }
 
     if (state.PageCopy.active) {
-      log(`True Page Copy - Script is currently copying the ${getObj('page', state.PageCopy.sourcePage).get('name')} page.`);
+      log(`True Page Copy - Script is currently copying the ${originalPage.get('name')} page.`);
     } else if (!originalPage || !destinationPage) {
       log('True Page Copy - One or both of the supplied page ids do not exist.');
       clearState();
