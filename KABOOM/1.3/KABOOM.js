@@ -9,7 +9,7 @@ var KABOOM = KABOOM || (function () {
   // Please read the README.md found in the Roll20-api-scripts repository
 
   const version = '1.3';
-  const lastUpdate = 1487619046;
+  const lastUpdate = 1490120540;
 
   const VFXtypes = {
     acid: {
