@@ -154,20 +154,13 @@ var KABOOM = KABOOM || (function () {
 
   // Returns an array of all valid drawings to move
   const findGraphics = function (token) {
-    if (state.KABOOM.drawings_only) {
-      return findObjs({
-        _type: 'graphic',
-        _pageid: token.pageid,
-        isdrawing: true,
-        layer: state.KABOOM.same_layer_only ? token.layer : true,
-      });
-    } else {
-      return findObjs({
-        _type: 'graphic',
-        _pageid: token.pageid,
-        layer: state.KABOOM.same_layer_only ? token.layer : true,
-      });
-    }
+    const graphicArray = findObjs({
+      _type: 'graphic',
+      _pageid: token.pageid,
+      layer: state.KABOOM.same_layer_only ? token.layer : true,
+    });
+    if (state.KABOOM.drawings_only) return _.filter(graphicArray, graphic => graphic.get('isdrawing'));
+    return graphicArray;
   };
 
   // Returns an array of all paths on the dynamic lighting layer
@@ -448,6 +441,10 @@ var KABOOM = KABOOM || (function () {
           printToChat('gm', `The script now ${state.KABOOM.walls_stop_movement ? 'observes' : 'ignores'} walls when calculating movement.`);
           break;
 
+        case 'debug':
+          log(state.KABOOM);
+          break;
+
         case 'help':
           showHelp('gm');
           break;
@@ -489,26 +486,16 @@ var KABOOM = KABOOM || (function () {
     if (options.vfx) {
       if (options.effectPower > 0) {
         createExplosion(explosion_center, options, pageInfo)
-        return _.chain(affectedObjects)
-                .map(obj => moveGraphic(obj, explosion_center, options, pageInfo, walls))
-                .filter(o => o)
-                .sortBy('distance')
-                .value();
       } else {
-        setTimeout(() => createExplosion(explosion_center, options, pageInfo), 200)
-        return _.chain(affectedObjects)
-                .map(obj => moveGraphic(obj, explosion_center, options, pageInfo, walls))
-                .filter(o => o)
-                .sortBy('distance')
-                .value();
+        createExplosion(explosion_center, options, pageInfo)
+        setTimeout(() => { createExplosion(explosion_center, options, pageInfo) }, 150)
       }
-    } else {
-      return _.chain(affectedObjects)
-              .map(obj => moveGraphic(obj, explosion_center, options, pageInfo, walls))
-              .filter(o => o)
-              .sortBy('distance')
-              .value();
     }
+    return _.chain(affectedObjects)
+            .map(obj => moveGraphic(obj, explosion_center, options, pageInfo, walls))
+            .filter(o => o)
+            .sortBy('distance')
+            .value();
   };
 
   /*********************** END OF EXPOSED FUNCTION ****************************/
