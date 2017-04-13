@@ -1,0 +1,45 @@
+{
+    "name": "Weather",
+    "script": "Weather.js",
+    "version": "1.0",
+    "previousversions": [],
+    "description": "",
+    "authors": "Bodin Punyaprateep (PaprikaCC)",
+    "useroptions": [
+        {
+            "name": "GM Only",
+            "type": "checkbox",
+            "value": "true",
+            "description": "If checked, Weather will ignore non-GM requests. Unchecked by default."
+        },
+        {
+            "name":"Automatic Time Advancement",
+            "type":"checkbox",
+            "value": "true",
+            "checked": "checked",
+            "description": "If checked, Weather will automatically detect changes in time and update the weather accordingly. Checked by default."
+        },
+        {
+            "name": "Rate of Passing Time",
+            "type": "number",
+            "default": "7",
+            "description": "This number determines how much faster the script will treat the passage of time. Does nothing if 'Automatic Time Advancement' is deactivated. Defaults to 7 (one in-game week per real day). Minimum of 1 (time passes at the same rate)."
+        },
+        {
+            "name": "In-game Days Per Season",
+            "type": "number",
+            "default": "92",
+            "description": "This number determines how long each season will last in-game. Defaults to 92 (roughly 3 months a season). Minimum of 0 (no seasons)."
+        },
+        {
+            "name": "Trend Scale Percentage",
+            "type": "number",
+            "default": "100",
+            "description": "This number represents the percentage of potential change used. For example, a value of 1000 would increase the daily temperature trends by 10 times the original. Increase this value for larger fluxuations, decrease it for more stability. Defaults to 100 (100% of original values). Minimum of 0 (no fluctuations)."
+        }
+    ],
+    "roll20userid": "558646",
+    "dependencies": [],
+    "modifies": {},
+    "conflicts": []
+}
