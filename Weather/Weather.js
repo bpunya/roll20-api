@@ -333,13 +333,14 @@ var Weather = Weather || (function () {
  * else switch(install_stage), case 'stage' If (arg is valid in stage), store in temp state and ask if that was correct. Else if (arg === continue) ask the question again.
  *
  */
+
   const runInstall = function (args) {
     const secureString = getRandomString(32);
     const biomeQuestion = _.reduce(BIOME_LIST, (memo, biome) => { memo += `[${biome.name}](!weather ${secureString} ${biome.name})`; return memo; }, 'Please select one of the following biomes to describe where your players are:<br>');
-    const seasonQuestion = _.reduce(SEASON_LIST, (memo, season) => { memo += `[${season}](!weather ${secureString} ${season})`; return memo; }, 'Please select the current season your players are experiencing:<br>')
+    const seasonQuestion = _.reduce(SEASON_LIST, (memo, season) => { memo += `[${season.name}](!weather ${secureString} ${season.name})`; return memo; }, 'Please select the current season your players are experiencing:<br>')
     const temperatureQuestion = `Please click this button and enter the current temperature your players are experiencing in the window that appears.<br>[Temperature](!weather ${secureString} ?{Please enter a temperature in Celsius.|0})`;
     const confirmationStatement = `You said that the ${state.Weather.install.stage()} is ${args[0]}. Is that what you wanted?<br>[Yes](!weather ${secureString} true)[No](!weather ${secureString} false)`;
-    const finishedStatement = 'Congratulations! The installation of Weather is complete. Get your first weather description with the command<br><span style="color:#222222">!weather</span><br>If you\'ve made a mistake somewhere, you can fix it with the command<br><span style="color:#222222">!weather set [temperature|humidity|windSpeed|precipitation]:15</span>, replacing the 15 with your own value. If you need more help, just use <span style="color:#222222">"!weather help"</span> to see the help menu.';
+    const finishedStatement = 'Congratulations! The installation of Weather is complete. Get your first weather description with the command<br><span style="color:#777777">!weather</span><br>If you\'ve made a mistake somewhere, you can fix it with the command<br><span style="color:#777777">!weather set [temperature|humidity|windSpeed|precipitation]:15</span>, replacing the 15 with your own value. If you need more help, just use <span style="color:#777777">"!weather help"</span> to see the help menu.';
     if (state.Weather.install.temp) {
       if (args === 'true') {
         let stage = state.Weather.install.stage();
@@ -351,6 +352,7 @@ var Weather = Weather || (function () {
         } else {
           state.Weather.biome = _.find(BIOME_LIST)
           state.Weather.seasonSeed = state.Weather.install.season
+          return;
         }
       } else if (args === 'false') {
         state.Weather.install.temp = null;
