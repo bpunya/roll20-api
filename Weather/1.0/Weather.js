@@ -2,8 +2,8 @@
 // Author: PaprikaCC (Bodin Punyaprateep)
 
 var Weather = Weather || (function () {
-  const version = '1.0';
-  const lastUpdate = 0;
+  const version = 1.0;
+  const lastUpdate = 1492300246;
   const EFFECT_SEARCH_RANGE = 100;
   const SECONDS_PER_DAY = 86400 / (state.Weather && state.Weather.timeScale ? state.Weather.timeScale : 7);
   const FORMATTING_START = '<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">' +
