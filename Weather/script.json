@@ -16,8 +16,7 @@
             "name":"Automatic Time Advancement",
             "type":"checkbox",
             "value": "true",
-            "checked": "checked",
-            "description": "If checked, Weather will automatically detect changes in time and update the weather accordingly. Checked by default."
+            "description": "If checked, Weather will automatically detect changes in time and update the weather accordingly. Unchecked by default."
         },
         {
             "name": "Rate of Passing Time",

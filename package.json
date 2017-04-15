@@ -1,0 +1,24 @@
+{
+  "name": "roll20-api",
+  "version": "1.0.0",
+  "description": "A collection of scripts for use in the Roll20API",
+  "main": "README.md",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bpunya/roll20-api.git"
+  },
+  "author": "Bodin Punyaprateep",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bpunya/roll20-api/issues"
+  },
+  "homepage": "https://github.com/bpunya/roll20-api#readme",
+  "devDependencies": {
+    "eslint": "^3.17.1",
+    "eslint-config-airbnb-base": "^11.1.1",
+    "eslint-plugin-import": "^2.2.0"
+  }
+}
