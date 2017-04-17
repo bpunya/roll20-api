@@ -3,39 +3,48 @@
 
 var Weather = Weather || (function () {
   const version = 1.0;
-  const lastUpdate = 1492300246;
+  const lastUpdate = 1492406524;
   const EFFECT_SEARCH_RANGE = 100;
-  const SECONDS_PER_DAY = 86400 / (state.Weather && state.Weather.timeScale ? state.Weather.timeScale : 7);
-  const FORMATTING_START = '<div style="background-color:#ffffff; padding:5px; border-width:2px; border-style:solid;">' +
-                           '<div style="border-width:2px; border-style:dotted; padding:5px">';
+  const SECONDS_PER_DAY = 86400000 / (state.Weather && state.Weather.timeScale ? state.Weather.timeScale : 7);
+  const FORMATTING_START = '<div style="box-shadow:-2px 2px 3px #999; background-color:#ADD8E6; border-style:solid; border-width:1px;">' +
+                           '<div style="border-width:5px; border-style:solid; border-color:#FFF; padding:5px">';
   const FORMATTING_END = '</div></div>';
 
-  class WeatherEffect {
-    constructor(name, temp, wind, humid, precip) {
-      this.name = name;
-      this.stats = {
-        temperature: temp || 0,
-        windSpeed: wind || 0,
-        humidity: humid || 0,
-        precipitation: precip || 0,
+  class Biome {
+    constructor(a, b, c, d, e) {
+      this.name = a;
+      this.temperature = {
+        max: b[0],
+        min: b[1],
+        variance: b[2],
       };
+      this.windSpeed = c;
+      this.humidity = d;
+      this.precipitation = e;
     }
   }
 
-  const SEASON_LIST = [{ name: 'Spring', id: 1 }, { name: 'Summer', id: 2 }, { name: 'Fall', id: 3 }, { name: 'Winter', id: 4 }];
-  const BIOME_LIST = [new WeatherEffect('Metropolis', 10, 5, 10, 10)];
-  const WEATHER_LIST = [new WeatherEffect('rain', 25, 20, 100, 100), new WeatherEffect('snow', -10, 20, 50, 100), new WeatherEffect('fog', 10, 0, 100, 50), new WeatherEffect('dust', 20, 15, 0, 0), new WeatherEffect('haze', 35, 0, 50, 0), new WeatherEffect('a gentle breeze', 10, 5, 5, 5), new WeatherEffect('a bitter chill', -30, 30, 0, 0), new WeatherEffect('a sweltering heat', 50, 0, 0, 0)];
-  const CLOUD_LIST = [new WeatherEffect('Overcast', 0, 15, 75, 75), new WeatherEffect('Clear', 0, 20, 0, 0), new WeatherEffect('Partly Cloudy', 0, 20, 25, 25), new WeatherEffect('Mostly Cloudy', 0, 15, 35, 35), new WeatherEffect('still', 0, 0, 0, 0)];
-  const PHENOMENA_LIST = [new WeatherEffect('Thunderstorms', 20, 50, 100, 100), new WeatherEffect('Tornados', 40, 100, 100, 100), new WeatherEffect('Hail', 0, 50, 33, 100)];
-
   class Database {
     constructor() {
-      this.forecasts = [];
       this.biome = BIOME_LIST;
-      this.season = SEASON_LIST;
       this.weather = WEATHER_LIST;
       this.cloud = CLOUD_LIST;
       this.phenomena = PHENOMENA_LIST;
+      this.season = SEASON_LIST;
+      this.forecasts = [];
+    }
+  }
+
+  class Forecast {
+    constructor(statistics, daysSinceSeed) {
+      this.day = daysSinceSeed || getDaysElapsed(state.Weather.timeSeed, Date.now());
+      this.time = daysSinceSeed ? state.Weather.timeSeed + (daysSinceSeed * SECONDS_PER_DAY) : Date.now();
+      this.stats = {
+        temperature: statistics.temperature || 0,
+        windSpeed: statistics.windSpeed || 0,
+        humidity: statistics.humidity || 0,
+        precipitation: statistics.precipitation || 0,
+      };
     }
   }
 
@@ -46,9 +55,8 @@ var Weather = Weather || (function () {
       this.tmp = null;
       this.biome = null;
       this.season = null;
-      this.temperature = null;
       this.stageIndex = 0;
-      this.stageList = ['biome', 'season', 'temperature', false];
+      this.stageList = ['biome', 'season', false];
     }
   }
 
@@ -62,14 +70,14 @@ var Weather = Weather || (function () {
   class StateObj {
     constructor() {
       this.biome = null;
-      this.timeSeed = null;
-      this.seasonSeed = null;
-      this.trendcale = 1;
+      this.gmOnly = false;
       this.autoAdvance = false;
+      this.timeSeed = Date.now();
+      this.seasonSeed = null;
+      this.trendScale = 1;
       this.timeScale = 7;
       this.seasonDuration = 92;
       this.maxHistory = 50;
-      this.gmOnly = false;
       this.lastupdated = 0;
       this.pause = new PauseObj();
       this.install = new InstallObj();
@@ -77,18 +85,23 @@ var Weather = Weather || (function () {
     }
   }
 
-  class ForecastObj {
-    constructor(statistics, daysSinceSeed) {
-      this.day = daysSinceSeed || getDaysElapsed(state.Weather.timeSeed, new Date().getTime());
-      this.time = state.Weather.timeSeed + (daysSinceSeed * SECONDS_PER_DAY);
+  class WeatherEffect {
+    constructor(a, b, c, d, e) {
+      this.name = a;
       this.stats = {
-        temperature: statistics.temperature || 0,
-        windSpeed: statistics.windSpeed || 0,
-        humidity: statistics.humidity || 0,
-        precipitation: statistics.precipitation || 0,
+        temperature: b,
+        windSpeed: c,
+        humidity: d,
+        precipitation: e,
       };
     }
   }
+
+  const SEASON_LIST = [{ name: 'Spring', id: 7 }, { name: 'Summer', id: 1 }, { name: 'Fall', id: 3 }, { name: 'Winter', id: 5 }];
+  const BIOME_LIST = [new Biome('Metropolis', [25, -20, 5], 25, 25, 33)];
+  const WEATHER_LIST = [new WeatherEffect('rain', 25, 20, 100, 100), new WeatherEffect('snow', -10, 20, 50, 100), new WeatherEffect('fog', 10, 0, 100, 50), new WeatherEffect('dust', 20, 15, 0, 0), new WeatherEffect('haze', 35, 0, 50, 0), new WeatherEffect('a gentle breeze', 10, 5, 5, 5), new WeatherEffect('a bitter chill', -30, 30, 0, 0), new WeatherEffect('a sweltering heat', 50, 0, 0, 0)];
+  const CLOUD_LIST = [new WeatherEffect('overcast', 0, 15, 75, 75), new WeatherEffect('clear', 0, 20, 0, 0), new WeatherEffect('partly cloudy', 0, 20, 25, 25), new WeatherEffect('mostly cloudy', 0, 15, 35, 35), new WeatherEffect('still', 0, 0, 0, 0)];
+  const PHENOMENA_LIST = [new WeatherEffect('thunderstorm', 20, 50, 100, 100), new WeatherEffect('tornado', 40, 100, 100, 100), new WeatherEffect('hail storm', 0, 50, 33, 100)];
 
 /**************************************************************************************************/
 /********************************** SETUP AND CHECKING FUNCTION  **********************************/
@@ -98,7 +111,7 @@ var Weather = Weather || (function () {
     log(`-- Weather v${version} -- [${new Date(lastUpdate * 1000)}]`);
     if (!state.Weather) {
       log('Weather -- Thank you for installing Weather! Please see the chat log to set up the script to your environment.');
-      printToUser('gm', 'Thank you for installing Weather! Please follow the instructions in the following chat messages to set up the script to your environment.')
+      printToUser('gm', 'Thank you for installing Weather! Please follow the instructions in the following chat messages to set up the script to your environment.');
       resetState();
       handleInstall();
     } else if (state.Weather.install.needed) {
@@ -117,7 +130,7 @@ var Weather = Weather || (function () {
       s.lastupdated = g.lastsaved;
       s.timeScale = Math.max(parseInt(g['Rate of Passing Time'], 10), 1);
       s.seasonDuration = Math.max(parseInt(g['In-Game Days per Season'], 10), 0);
-      s.trendcale = Math.max((parseInt(g['Season Effect Percentage'], 10) / 100), 0);
+      s.trendScale = Math.max((parseInt(g['Season Effect Percentage'], 10) / 100), 0);
       s.maxHistory = Math.max(Math.min(parseInt(g['Maximum Forecasts Kept in History'], 10), 5), 150);
       s.autoAdvance = g['Automatic Time Advancement'] === 'true';
       s.gmOnly = g['GM Only'] === 'true';
@@ -130,14 +143,7 @@ var Weather = Weather || (function () {
 
 // Creates a new WeatherEffect object and pushes it to the proper state database
   const createNewEffect = function (name, temperature, windSpeed, humidity, precipitation) {
-    const inputArray = [temperature, windSpeed, humidity, precipitation].map(value => parseFloat(value));
-    if (inputArray.every(value => !Number.isNaN(value))) {
-      printToUser('gm', 'You need to provide a valid value for the effect\'s temperature, wind speed, humidity, and precipitation (in that order).');
-    } else if (!state.Weather.database[name]) {
-      printToUser('gm', 'You need to provide a valid weather effect type. Your options are "biome", "weather", and "cloud".');
-    } else {
-      state.Weather.database[name].push(new WeatherEffect(name, ...inputArray));
-    }
+    return;
   };
 
 // Creates a new weather object and pushes it to the state database.
@@ -145,21 +151,21 @@ var Weather = Weather || (function () {
   const createNewForecast = function (days) {
     const s = state.Weather;
     const prev = s.database.forecasts.slice(-1)[0];
-    const daysSinceLast = parseInt(days, 10) || getDaysElapsed(prev.time, new Date().getTime());
+    const daysSinceLast = parseInt(days, 10) || getDaysElapsed(prev.time, Date.now());
     const seasonDay = daysSinceLast + prev.day;
     const trend = {
-      temperature: getSeasonTrend('temperature', seasonDay),
-      windSpeed: getValueChange(0, s.biome.stats.windSpeed, daysSinceLast),
-      humidity: getValueChange(0, s.biome.stats.windSpeed, daysSinceLast),
-      precipitation: getValueChange(0, s.biome.stats.windSpeed, daysSinceLast),
+      temperature: getSeasonTrend(seasonDay),
+      windSpeed: getValueChange(0, s.biome.windSpeed, daysSinceLast),
+      humidity: getValueChange(0, s.biome.humidity, daysSinceLast),
+      precipitation: getValueChange(0, s.biome.precipitation, daysSinceLast),
     };
     const newStats = {
-      temperature: getValueChange(prev.stats.temperature + trend.temperature, s.biome.stats.temperature * s.trendcale, daysSinceLast),
-      windSpeed: Math.max(getValueChange(5 + trend.windSpeed, s.biome.stats.windSpeed * s.trendcale, daysSinceLast), 0),
-      humidity: Math.min(Math.max(getValueChange(prev.stats.humidity + trend.humidity, s.biome.stats.humidity * s.trendcale, daysSinceLast), 0), 100),
-      precipitation: Math.min(Math.max(getValueChange(prev.stats.precipitation + trend.precipitation, s.biome.stats.precipitation * s.trendcale, daysSinceLast), 0), 100),
+      temperature: getValueChange(trend.temperature, s.biome.temperature * s.trendScale, daysSinceLast),
+      windSpeed: Math.max(getValueChange(prev.stats.windSpeed, s.biome.windSpeed * s.trendScale, daysSinceLast), 0),
+      humidity: Math.min(Math.max(getValueChange(prev.stats.humidity + trend.humidity, s.biome.humidity * s.trendScale, daysSinceLast), 0), 100),
+      precipitation: Math.max(getValueChange(prev.stats.precipitation + trend.precipitation, s.biome.precipitation * s.trendScale, daysSinceLast), 0),
     };
-    const currentWeather = new ForecastObj(newStats, seasonDay);
+    const currentWeather = new Forecast(newStats, seasonDay);
     s.database.forecasts.push(currentWeather);
     return currentWeather;
   };
@@ -179,6 +185,12 @@ var Weather = Weather || (function () {
     s.database.forecasts[s.database.forecasts.length - 1]['stats'] = Object.assign(s.database.forecasts.slice(-1)[0]['stats'], newStats);
   };
 
+  const modifyForecastTimes = function (input) {
+    if (_.isNaN(input)) return;
+    state.Weather.forecasts = _.map(state.Weather.forecasts, (forecast) => { const newForecast = forecast; newForecast.time -= input; return newForecast; });
+    state.Weather.timeSeed -= input;
+  };
+
 /**************************************************************************************************/
 /********************************* MATH AND COMPARISON FUNCTIONS **********************************/
 /**************************************************************************************************/
@@ -187,20 +199,20 @@ var Weather = Weather || (function () {
   const getClosestEffect = function (type, toCompare, range) {
     if (!state.Weather.database[type]) return undefined;
     const closestEffect = _.chain(state.Weather.database[type])
-                          .map(effect => ({
-                            name: effect.name,
-                            distance: ['temperature', 'windSpeed', 'humidity', 'precipitation'].reduce((memo, name) => { memo += Math.abs(effect.stats[name] - toCompare[name]); return memo; }, 0),
-                          }))
-                          .sortBy(effect => effect.distance)
-                          .first()
-                          .value();
+                           .map(effect => ({
+                             name: effect.name,
+                             distance: ['temperature', 'windSpeed', 'humidity', 'precipitation'].reduce((memo, name) => { memo += Math.abs(effect.stats[name] - toCompare[name]); return memo; }, 0),
+                           }))
+                           .sortBy(effect => effect.distance)
+                           .first()
+                           .value();
     if (!range || closestEffect.distance < range) return closestEffect.name;
     return undefined;
   };
 
 // Returns the amount of full in-game days elapsed between the two inputs
   const getDaysElapsed = function (originalTime, newTime) {
-    return Math.floor((originalTime - newTime) / SECONDS_PER_DAY);
+    return Math.floor((newTime - originalTime) / SECONDS_PER_DAY);
   };
 
   const getRandomString = function (length) {
@@ -208,22 +220,26 @@ var Weather = Weather || (function () {
   };
 
 // Returns a value based on the slope of a sine curve where wave period is equal to seasonDuration
-  const getSeasonTrend = function (name, days) {
-    const biomeStat = state.Weather.biome.stats[name];
-    const time = (days / state.Weather.seasonDuration) * Math.PI;
-    const seedShift = (state.Weather.seasonSeed * (Math.PI / 4)) + (Math.PI / 8);
-    return biomeStat * state.Weather.trendcale * Math.cos(time + seedShift);
+  const getSeasonTrend = function (days) {
+    const s = state.Weather;
+    const tempSkew = (s.biome.temperature.max + s.biome.temperature.max) / 2;
+    const tempRange = (s.biome.temperature.max - s.biome.temperature.max) / 2;
+    const time = (days / s.seasonDuration) * (Math.PI / 4);
+    const seedShift = (s.seasonSeed * (Math.PI / 4));
+    return tempSkew + (tempRange * Math.sin(time + seedShift));
   };
 
 // Returns a description of the forecast
   const getWeatherDescription = function (forecast) {
-    const majorCondition = getClosestEffect('weather', forecast.stats);
-    const minorCondition = getClosestEffect('cloud', forecast.stats);
-    const phenomena = getClosestEffect('phenomena', forecast.stats, EFFECT_SEARCH_RANGE);
-    const humidity = forecast.stats.humidity < 5 ? 'dry' : forecast.stats.humidity < 15 ? 'calm' : forecast.stats.humidity < 30 ? 'moist' : 'wet';
-    const temperature = forecast.stats.temperature < 5 ? 'chilly' : forecast.stats.temperature < 15 ? 'mild' : forecast.stats.temperature < 30 ? 'hot' : 'blisteringly hot';
-    const windSpeed = forecast.stats.windSpeed < 5 ? 'very light' : forecast.state.windSpeed < 15 ? 'light' : forecast.stats.windSpeed < 30 ? 'moderate' : 'heavy';
-    return `The air is filled with ${majorCondition}, and the sky is ${minorCondition}. It is ${temperature} and ${humidity} here, and the wind blows ${windSpeed} against you. ${phenomena ? `Because of current conditions, a ${phenomena} is likely to occur, if not already happening.` : 'Thankfully nothing worse is happening right now.'}`;
+    const f = forecast.stats;
+    const majorCondition = getClosestEffect('weather', f);
+    const minorCondition = getClosestEffect('cloud', f);
+    const phenomena = getClosestEffect('phenomena', f, EFFECT_SEARCH_RANGE);
+    const humidity = f.humidity < 5 ? 'dry' : f.humidity < 15 ? 'calm' : f.humidity < 30 ? 'moist' : 'wet';
+    const temperature = f.temperature < 5 ? 'chilly' : f.temperature < 15 ? 'mild' : f.temperature < 30 ? 'hot' : 'blisteringly hot';
+    const windSpeed = f.windSpeed < 5 ? 'very light' : f.windSpeed < 15 ? 'light' : f.windSpeed < 30 ? 'moderate' : 'heavi';
+    const precipitation = f.precipitation < 10 ? '' : f.precipitation < 30 ? 'lightly' : f.precipitation < 75 ? 'heavily' : f.precipitation < 150 ? 'non-stop' : 'like a monsoon';
+    return `The air is filled with ${majorCondition}, and the sky is ${minorCondition}. It is ${temperature} and ${humidity} here, and the wind blows ${windSpeed}ly against you. ${precipitation ? `It has been raining ${precipitation} for the last while.` : ''} ${phenomena ? `Because of current conditions, a ${phenomena} is likely to occur if it isn't already happening.` : 'Thankfully nothing worse is happening right now.'}`;
   };
 
 // Returns a new value depending on the amount of iterations, trend and original
@@ -249,10 +265,10 @@ var Weather = Weather || (function () {
   const advanceWeather = function (args) {
     const s = state.Weather;
     const days = parseInt(args, 10);
-    const daysSinceLast = getDaysElapsed(s.database.forecasts.slice(-1)[0]['time'], new Date().getTime());
+    const daysSinceLast = getDaysElapsed(s.database.forecasts.slice(-1)[0]['time'], Date.now());
     if (!s.pause.active && days > 0) {
       if (days > daysSinceLast) {
-        s.timeSeed -= SECONDS_PER_DAY * (days - daysSinceLast);
+        modifyForecastTimes(SECONDS_PER_DAY * (days - daysSinceLast));
         return createNewForecast(days);
       }
       return createNewForecast();
@@ -269,7 +285,7 @@ var Weather = Weather || (function () {
 // Checks to see if we need to update. If yes, return a new forecast. Otherwise return the latest.
   const getUpdatedForecast = function () {
     const s = state.Weather;
-    const daysSinceLast = getDaysElapsed(s.database.forecasts.slice(-1)[0]['time'], new Date().getTime());
+    const daysSinceLast = getDaysElapsed(s.database.forecasts.slice(-1)[0]['time'], Date.now());
     if (!s.pause.active && daysSinceLast >= 1 && s.autoAdvance) return createNewForecast(daysSinceLast);
     return s.database.forecasts.slice(-1)[0];
   };
@@ -306,18 +322,18 @@ var Weather = Weather || (function () {
         case 'clear': {
           if (!playerIsGM(msg.playerid)) return;
           printToUser(target, 'Clearing weather history!');
-          s.database.forecasts = [s.database.forecasts.slice(-1)[0]];
+          state.Weather.database.forecasts = [s.database.forecasts.slice(-1)[0]];
           break;
         }
         case 'debug': {
           if (!playerIsGM(msg.playerid)) return;
-          if (args[3] && args[3] === 'reset') resetState();
+          if (args[2] && args[2] === 'reset') resetState();
           log(state.Weather);
           break;
         }
         case 'decline': {
           if (!playerIsGM(msg.playerid) || !s.install.code) return;
-          s.install.code = null;
+          state.Weather.install.code = null;
           printToUser(target, 'Action declined.');
           break;
         }
@@ -334,11 +350,11 @@ var Weather = Weather || (function () {
             } else {
               printToUser(target, `The ${args[3]} biome doesn't exist.`);
             }
-            s.install.code = null;
+            state.Weather.install.code = null;
           } else {
             const secureString = getRandomString(32);
             const message = _.reduce(s.database.biome, (memo, biome) => { memo += `[${biome.name}](!weather move ${secureString} ${biome.name})`; return memo; }, 'Please select the biome that your players are moving to.<br>');
-            s.install.code = secureString;
+            state.Weather.install.code = secureString;
             printToUser(target, message);
           }
           break;
@@ -351,7 +367,7 @@ var Weather = Weather || (function () {
         case 'reinstall': {
           if (!playerIsGM(msg.playerid)) return;
           const secureString = getRandomString(32);
-          s.install.code = secureString;
+          state.Weather.install.code = secureString;
           printToUser(target, `Are you sure you want to reset all information? <br>[Yes](!weather ${secureString}) [No](!weather decline)`);
           break;
         }
@@ -378,7 +394,9 @@ var Weather = Weather || (function () {
         }
         default: {
           if (s.install.needed) {
-            printToUser(target, `Weather hasn't been fully installed yet. ${playerIsGM(msg.playerid) ? `Click this button to continue the process.<br>[Continue](!weather ${s.install.code})` : 'Message your GM to let them know!'}`);
+            const secureString = getRandomString(32);
+            state.Weather.install.code = secureString;
+            printToUser(target, `Weather hasn't been fully installed yet. ${playerIsGM(msg.playerid) ? `Click this button to continue the process.<br>[Continue](!weather ${secureString})` : 'Message your GM to let them know!'}`);
           } else {
             printToUser(target, getWeatherDescription(getLastForecast()));
           }
@@ -395,12 +413,11 @@ var Weather = Weather || (function () {
     }
     const args = input || [];
     const secureString = getRandomString(32);
-    const getQuestion = (list, statement) => _.reduce(state.Weather.database[list], (memo, item) => { memo += `[${item.name}](!weather ${secureString} ${item.name})`; return memo; }, `${statement}<br>`);
+    const getQuestion = (list, statement) => _.reduce(state.Weather.database[list], (memo, item) => { memo += `[${item.name}](!weather ${secureString} ${item.name})`; return memo; }, `${statement}<hr>`);
     state.Weather.install.code = secureString;
     const biomeQuestion = getQuestion('biome', 'Please select the biome that most closely resembles where your players are. This can be changed later.');
     const seasonQuestion = getQuestion('season', 'Please select the season that your characters are experiencing. This script assumes you\'re starting at the beginning of a season.');
-    const temperatureQuestion = `Please click the button and enter the current temperature your players are experiencing.<br>[Select Temperature](!weather ${secureString} ?{Please enter a temperature in Celsius.|0})`;
-    const confirmationStatement = `You said that the ${state.Weather.install.stageList[state.Weather.install.stageIndex]} is ${args[0]}. Is that what you wanted?<br>[Yes](!weather ${secureString} true)[No](!weather ${secureString} false)`;
+    const confirmationStatement = `You said that the ${state.Weather.install.stageList[state.Weather.install.stageIndex]} is ${args[0]}. Is that what you wanted?<hr>[Yes](!weather ${secureString} true)[No](!weather ${secureString} false)`;
     const finishedStatement = 'The installation of Weather is complete. Get your first weather description with the command <span style="color:#777777">!weather</span>. If you\'ve made a mistake somewhere, you can fix it with the command <span style="color:#777777">!weather set temperature:15</span>, replacing the 15 with your own value. If you need more help, just use <span style="color:#777777">"!weather help"</span> to see the help menu.';
     // LOGIC BELOW - Confirmation ? Handle confirmation : Check what to do at each stage;
     if (state.Weather.install.tmp) {
@@ -411,12 +428,17 @@ var Weather = Weather || (function () {
         state.Weather.install.stageIndex += 1;
         stage = state.Weather.install.stageList[state.Weather.install.stageIndex];
         if (stage) {
-          const message = stage === 'biome' ? biomeQuestion : stage === 'season' ? seasonQuestion : temperatureQuestion;
+          const message = stage === 'biome' ? biomeQuestion : seasonQuestion;
           printToUser('gm', message);
         } else {
           state.Weather.biome = state.Weather.install.biome;
           state.Weather.seasonSeed = state.Weather.install.season.id;
-          state.Weather.database.forecasts.push(new ForecastObj({ temperature: state.Weather.install.temperature }, 0));
+          state.Weather.database.forecasts.push(new Forecast({
+            temperature: getSeasonTrend(0),
+            windSpeed: normalInverse(Math.random(), s.biome.windSpeed * 2, s.biome.windSpeed),
+            humidity: normalInverse(Math.random(), s.biome.humidity * 2, s.biome.humidity),
+            precipitation: normalInverse(Math.random(), s.biome.precipitation * 2, s.biome.precipitation),
+            }, 0));
           printToUser('gm', finishedStatement);
           state.Weather.install = new InstallObj();
           state.Weather.install.needed = false;
@@ -424,13 +446,13 @@ var Weather = Weather || (function () {
       } else {
         state.Weather.install.tmp = null;
         const stage = state.Weather.install.stageList[state.Weather.install.stageIndex];
-        const message = stage === 'biome' ? biomeQuestion : stage === 'season' ? seasonQuestion : temperatureQuestion;
+        const message = stage === 'biome' ? biomeQuestion : seasonQuestion;
         printToUser('gm', message);
       }
     // End of IF WAITING ON CONFIRMATION;
     } else {
       switch (state.Weather.install.stageList[state.Weather.install.stageIndex]) {
-        case 'biome':
+        case 'biome': {
           if (_.find(state.Weather.database.biome, item => item.name === args[0])) {
             state.Weather.install.tmp = _.find(state.Weather.database.biome, item => item.name === args[0]);
             printToUser('gm', confirmationStatement);
@@ -438,7 +460,8 @@ var Weather = Weather || (function () {
             printToUser('gm', biomeQuestion);
           }
           break;
-        case 'season':
+        }
+        case 'season': {
           if (_.find(state.Weather.database.season, item => item.name === args[0])) {
             state.Weather.install.tmp = _.find(state.Weather.database.season, item => item.name === args[0]);
             printToUser('gm', confirmationStatement);
@@ -446,17 +469,6 @@ var Weather = Weather || (function () {
             printToUser('gm', seasonQuestion);
           }
           break;
-        case 'temperature': {
-          if (parseFloat(args[0]).toString() === args[0]) {
-            state.Weather.install.tmp = parseFloat(args[0]);
-            printToUser('gm', confirmationStatement);
-          } else {
-            printToUser('gm', temperatureQuestion);
-          }
-          break;
-        }
-        default: {
-          printToUser('gm', finishedStatement);
         }
       }
     }
@@ -471,12 +483,11 @@ var Weather = Weather || (function () {
     }
     if (pause) {
       s.pause.active = true;
-      s.pause.start = new Date().getTime();
+      s.pause.start = Date.now();
       printToUser('gm', 'Weather has been paused. You will only be able to retrieve the last weather effect until the resume command is received.');
     } else {
-      const timeDifference = new Date().getTime() - s.pause.start;
-      s.database.forecasts = _.each(s.database.forecasts, (forecast) => { forecast.time += timeDifference; });
-      s.timeSeed += timeDifference;
+      const timeDifference = Date.now() - s.pause.start;
+      modifyForecastTimes(timeDifference);
       s.pause = new PauseObj();
       printToUser('gm', 'Weather has resumed. You can now advance days and get updates again.');
     }
@@ -485,9 +496,9 @@ var Weather = Weather || (function () {
 // This function mimics a Quartile Function
   const normalInverse = function (percentile, mean, deviation) {
   // Taken from: https://gist.github.com/kmpm/1211922/
-    if (![percentile, mean, deviation].every(arg => parseFloat(arg) === arg)) {
+    if ([percentile, mean, deviation].find(arg => _.isNaN(arg))) {
       throw new Error('An input is not a number');
-    } else if (deviation < 0 || mean < 0 || percentile < 0) {
+    } else if (deviation < 0 || percentile < 0) {
       throw new Error('Negative inputs not allowed');
     } else if (percentile >= 1 || percentile <= 0) {
       return percentile > 0 ? Infinity : -Infinity;
@@ -544,13 +555,30 @@ var Weather = Weather || (function () {
 
   const resetState = function () {
     state.Weather = new StateObj();
-    state.Weather.timeseed = new Date().getTime();
   };
 
 // Help message
   const showHelp = function (target) {
-    const help = '' +
-                 '';
+    const help = '<div>' +
+                  '<strong><h1 style="text-align:left;color:#FFF">Weather</h1></strong>' +
+                  '<p style="text-align:left;font-size:75%;">The following is a list of all current settings.</p>' +
+                  '</div>' +
+                  '<div style="color:#000000;background-color:#FFF">' +
+                  '<hr style="background:#000000; border:0; height:7px" />' +
+                  '<ul><b>Automatic Weather Updates</b>:<br>' +
+                    `${state.Weather.autoAdvance ? 'Passage of time is observed' : 'Weather must be updated manually'}</ul>` +
+                  '</div>' +
+                  '<div style="">' +
+                  '<p style="font-size:90%;">To use <span style="color:#162955">Weather</span> as a macro or chat command, follow this format:<br>' +
+                  '<span style="color:#555">!weather</span><br>' +
+                  'or<br>' +
+                  '<span style="color:#555">!weather advance 7</span></p>' +
+                  '</div>' +
+                  '<div>' +
+                  `<p style="font-size:90%;"> To change one or more of <span style="color:#162955">Weather</span>'s settings, enter !weather ` +
+                  `before one or more of the commands listed above, followed by a value.` +
+                  '</p>' +
+                  '</div>';
     printToUser(target, help);
   };
 
@@ -567,6 +595,7 @@ var Weather = Weather || (function () {
     Get: getLastForecast,
     GetUpdate: getUpdatedForecast,
     NormSInv: normalInverse,
+    Season: getSeasonTrend,
   };
 }());
 
