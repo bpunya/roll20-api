@@ -5,7 +5,7 @@ var Weather = Weather || (function () {
   const version = 1.0;
   const lastUpdate = 1492406524;
   const EFFECT_SEARCH_RANGE = 100;
-  const SECONDS_PER_DAY = 86400000 / (state.Weather && state.Weather.timeScale ? state.Weather.timeScale : 7);
+  const SECONDS_PER_DAY = 86400 / (state.Weather && state.Weather.timeScale ? state.Weather.timeScale : 7);
   const FORMATTING_START = '<div style="box-shadow:-2px 2px 3px #999; background-color:#ADD8E6; border-style:solid; border-width:1px;">' +
                            '<div style="border-width:5px; border-style:solid; border-color:#FFF; padding:5px">';
   const FORMATTING_END = '</div></div>';
