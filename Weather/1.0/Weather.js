@@ -5,7 +5,7 @@ var Weather = Weather || (function () {
   const version = 1.0;
   const lastUpdate = 1492489588;
   const EFFECT_SEARCH_RANGE = 100;
-  const TIME_PER_DAY = 86400 / (state.Weather && state.Weather.timeScale ? state.Weather.timeScale : 7) * 1000;
+  const TIME_PER_DAY = 86400 / (state.Weather && state.Weather.timeScale ? state.Weather.timeScale : 1) * 1000;
 
   class Biome {
     constructor(a, b, c, d, e) {
@@ -34,8 +34,8 @@ var Weather = Weather || (function () {
 
   class Forecast {
     constructor(statistics, daysSinceSeed) {
-      this.day = daysSinceSeed || getDaysElapsed(state.Weather.timeSeed, Date.now());
-      this.time = daysSinceSeed ? Math.floor(state.Weather.timeSeed + (daysSinceSeed * TIME_PER_DAY)) : Date.now();
+      this.day = daysSinceSeed;
+      this.time = Date.now();
       this.stats = {
         temperature: statistics.temperature || 0,
         windSpeed: statistics.windSpeed || 0,
@@ -50,8 +50,8 @@ var Weather = Weather || (function () {
       this.code = null;
       this.needed = true;
       this.tmp = null;
-      this.biome = null;
-      this.season = null;
+      this['biome'] = null;
+      this['season'] = null;
       this['wind speed'] = null;
       this['humidity percentage'] = null;
       this['amount of precipitation'] = null;
@@ -64,6 +64,7 @@ var Weather = Weather || (function () {
     constructor() {
       this.active = false;
       this.start = null;
+      this.delay = 0;
     }
   }
 
@@ -110,8 +111,8 @@ var Weather = Weather || (function () {
   const checkInstall = function () {
     log(`-- Weather v${version} -- [${new Date(lastUpdate * 1000)}]`);
     if (!state.Weather) {
-      log('Weather -- Thank you for installing Weather! Please see the chat log to set up the script to your environment.');
       printTo('gm', '<h1 style="color:#56ABE8">Weather</h1><hr>Thank you for installing Weather! Please follow the instructions in the following chat messages to set up the script to your environment.');
+      log('Weather -- Thank you for installing Weather! Please see the chat log to set up the script to your environment.');
       resetState();
       handleInstall();
     } else if (state.Weather.install.needed) {
@@ -122,6 +123,7 @@ var Weather = Weather || (function () {
       checkGlobalConfig();
       printTo('chat', getWeatherDescription(getUpdatedForecast()));
     }
+    return 'yes';
   };
 
   const checkGlobalConfig = function () {
@@ -141,7 +143,10 @@ var Weather = Weather || (function () {
 /**************************************************************************************************/
 /****************************** Chat and String Creation Functions ********************************/
 /**************************************************************************************************/
-
+  const getButton = function (message, link, style) {
+    const buttonStyle = style || " ";
+    return `<a href="${link}" style="${buttonStyle}">${message}</a>`;
+  }
   const getColourCode = function (temperature) {
     return '#000';
   };
@@ -214,17 +219,48 @@ var Weather = Weather || (function () {
   };
 
 // Creates a new WeatherEffect object and pushes it to the proper state database
-  const createNewEffect = function (name, temperature, windSpeed, humidity, precipitation) {
-    return;
+  const createNewEffect = function (type, name, temperature, windSpeed, humidity, precipitation) {
+    switch (type) {
+      case 'biome': {
+        if ([windSpeed, humidity, precipitation].every(value => parseFloat(value).toString() === value)) {
+          const inputArray = [windSpeed, humidity, precipitation].map(value => parseFloat(value));
+          const temperatureArray = JSON.parse(temperature);
+          if (Array.isArray(temperatureArray) && temperatureArray.every(value => parseFloat(value) === value)) {
+            const newEffect = new WeatherEffect(name, temperatureArray, ...inputArray);
+            state.Weather.database[type].push(newEffect);
+            printTo('gm', `Adding a new ${type} called ${name}.`)
+            break;
+          }
+        }
+        printTo('gm', 'One of the values entered was invalid.');
+        break;
+      }
+      case 'weather':
+      case 'cloud':
+      case 'phenomena': {
+        if ([temperature, windSpeed, humidity, precipitation].every(value => parseFloat(value).toString() === value)) {
+          const inputArray = [temperature, windSpeed, humidity, precipitation].map(value => parseFloat(value));
+          const newEffect = new WeatherEffect(name, ...inputArray);
+          state.Weather.database[type].push(newEffect);
+          printTo('gm', `Adding a new ${type} called ${name}.`)
+        } else {
+          printTo('gm', 'One of the values entered was not a number.');
+        }
+        break;
+      }
+      default: {
+        printTo('gm', 'You need to specify the type of effect you want to add. Your options are "biome, "weather", "cloud", and "phenomena ".');
+      }
+    }
   };
 
 // Creates a new weather object and pushes it to the state database.
 // Also returns the object created.
   const createNewForecast = function (days) {
     const s = state.Weather;
-    const prev = s.database.forecasts.slice(-1)[0];
+    const prev = getLastForecast();
     const daysSinceLast = parseInt(days, 10) || getDaysElapsed(prev.time, Date.now());
-    const seasonDay = daysSinceLast + prev.day;
+    const seasonDay = prev.day + daysSinceLast;
     const trend = {
       temperature: getSeasonTrend(seasonDay),
       windSpeed: getValueChange(0, s.biome.windSpeed, daysSinceLast),
@@ -232,10 +268,10 @@ var Weather = Weather || (function () {
       precipitation: getValueChange(0, s.biome.precipitation, daysSinceLast),
     };
     const newStats = {
-      temperature: getValueChange(trend.temperature, s.biome.temperature.variance * s.trendScale, daysSinceLast),
-      windSpeed: getValueChange(prev.stats.windSpeed, s.biome.windSpeed * s.trendScale, daysSinceLast),
-      humidity: getValueChange(prev.stats.humidity + trend.humidity, s.biome.humidity * s.trendScale, daysSinceLast),
-      precipitation: getValueChange(prev.stats.precipitation + trend.precipitation, s.biome.precipitation * s.trendScale, daysSinceLast),
+      temperature: getValueChange((prev.stats.temperature + trend.temperature) / 2, s.biome.temperature.variance, daysSinceLast),
+      windSpeed: getValueChange(prev.stats.windSpeed + trend.windSpeed, s.biome.windSpeed, daysSinceLast),
+      humidity: getValueChange(prev.stats.humidity + trend.humidity, s.biome.humidity, daysSinceLast),
+      precipitation: getValueChange(prev.stats.precipitation + trend.precipitation, s.biome.precipitation, daysSinceLast),
     };
     const currentWeather = new Forecast(verifyForecastStats(newStats), seasonDay);
     addToDatabase(currentWeather);
@@ -249,18 +285,13 @@ var Weather = Weather || (function () {
                         .map((item) => { const stat = item.split(':'); return { name: stat[0], value: stat[1] }; })
                         .filter(stat => _.contains(['temperature', 'windSpeed', 'humidity', 'precipitation'], stat.name))
                         .reject(stat => parseFloat(stat.value).toString() !== stat.value)
-                        .filter(stat => stat.name === 'temperature' || parseFloat(stat.value) > 0)
+                        .filter(stat => stat.name === 'temperature' || parseFloat(stat.value) >= 0)
+                        .filter(stat => stat.name !== 'humidity' || parseFloat(stat.value) <= 100)
                         .value();
-    const message = parsedArgs.reduce((memo, stat) => { memo += ` ${stat.name} by ${stat.value}`; return memo; }, 'Changing the following values on the latest forecast:');
+    const message = parsedArgs.reduce((memo, stat) => { memo += ` ${stat.name} to ${stat.value}`; return memo; }, 'Changing the following values on the latest forecast:');
     const newStats = parsedArgs.reduce((memo, stat) => { memo[stat.name] = parseFloat(stat.value); return memo; }, {});
     printTo('gm', message);
-    s.database.forecasts[s.database.forecasts.length - 1]['stats'] = Object.assign(s.database.forecasts.slice(-1)[0]['stats'], newStats);
-  };
-
-  const modifyForecastTimes = function (input) {
-    if (_.isNaN(input)) return;
-    state.Weather.database.forecasts = _.map(state.Weather.database.forecasts, (forecast) => { const newForecast = forecast; newForecast.time -= input; return newForecast; });
-    state.Weather.timeSeed -= input;
+    state.Weather.database.forecasts[s.database.forecasts.length - 1]['stats'] = Object.assign(getLastForecast()['stats'], newStats);
   };
 
 /**************************************************************************************************/
@@ -284,14 +315,14 @@ var Weather = Weather || (function () {
 
 // Returns the amount of full in-game days elapsed between the two inputs
   const getDaysElapsed = function (originalTime, newTime) {
-    return Math.floor((newTime - originalTime) / TIME_PER_DAY);
+    return Math.floor((newTime - originalTime - state.Weather.pause.delay) / TIME_PER_DAY);
   };
 
   const getRandomString = function (length) {
     return Math.round((36 ** (length + 1)) - (Math.random() * (36 ** (length + 1)))).toString(36).slice(1);
   };
 
-// Returns a value based on the slope of a sine curve where wave period is equal to seasonDuration
+// Returns a value based on a cosine curve where wave period is equal to seasonDuration
   const getSeasonTrend = function (days) {
     const s = state.Weather;
     const tempSkew = (s.biome.temperature.max + s.biome.temperature.min) / 2;
@@ -304,11 +335,12 @@ var Weather = Weather || (function () {
 // Returns a new value depending on the amount of iterations, trend and original
   const getValueChange = function (original, trend, iteration) {
     const current = original;
+    const deviation = trend * state.Weather.trendScale;
     let count = iteration || 1;
-    const iterator = (value) => {
+    const iterator = (mean) => {
       if (count > 0) {
         count -= 1;
-        const newValue = normalInverse(Math.random(), value, trend);
+        const newValue = normalInverse(Math.random(), mean, deviation);
         return iterator(newValue);
       }
       return value;
@@ -333,29 +365,27 @@ var Weather = Weather || (function () {
   const advanceWeather = function (args) {
     const s = state.Weather;
     const days = parseInt(args, 10);
-    const daysSinceLast = getDaysElapsed(s.database.forecasts.slice(-1)[0]['time'], Date.now());
+    const daysSinceLast = getDaysElapsed(getLastForecast()['time'], Date.now());
     if (!s.pause.active && days > 0) {
       if (days > daysSinceLast) {
-        modifyForecastTimes(TIME_PER_DAY * (days - daysSinceLast));
         return createNewForecast(days);
       }
       return createNewForecast();
     }
-    return s.database.forecasts.slice(-1)[0];
+    return getLastForecast();
   };
 
 // Returns the latest weather forecast
   const getLastForecast = function () {
-    if (state.Weather.database.forecasts.length) return state.Weather.database.forecasts.slice(-1)[0];
-    return undefined;
+    return state.Weather.database.forecasts.slice(-1)[0];
   };
 
 // Checks to see if we need to update. If yes, return a new forecast. Otherwise return the latest.
   const getUpdatedForecast = function () {
     const s = state.Weather;
-    const daysSinceLast = getDaysElapsed(s.database.forecasts.slice(-1)[0]['time'], Date.now());
-    if (!s.pause.active && daysSinceLast >= 1 && s.autoAdvance) return createNewForecast(daysSinceLast);
-    return s.database.forecasts.slice(-1)[0];
+    const daysSinceLast = getDaysElapsed(getLastForecast()['time'], Date.now());
+    if (!s.pause.active && s.autoAdvance && daysSinceLast > 0) return createNewForecast(daysSinceLast);
+    return getLastForecast();
   };
 
 /**************************************************************************************************/
@@ -390,7 +420,7 @@ var Weather = Weather || (function () {
         case 'clear': {
           if (!playerIsGM(msg.playerid)) return;
           printTo(target, 'Clearing weather history!');
-          state.Weather.database.forecasts = [s.database.forecasts.slice(-1)[0]];
+          state.Weather.database.forecasts = [getLastForecast()];
           break;
         }
         case 'debug': {
@@ -425,6 +455,20 @@ var Weather = Weather || (function () {
           printTo(target, getHelp());
           break;
         }
+        case 'history': {
+          if (parseFloat(args[2]).toString() === args[2]) {
+            const pastForecast = _.find(state.Weather.database.forecasts, forecast => forecast.time === parseFloat(args[2]));
+            if (pastForecast) {
+              printTo(target, getWeatherDescription(pastForecast));
+            } else {
+              printTo(target, 'Sorry! We couldn\'t find the forecast you wanted.');
+            }
+          } else {
+            const message = _.reduce(state.Weather.database.forecasts, (memo, forecast) => { memo += getButton(`Day ${forecast.day}`, `!weather history ${forecast.time}`); return memo; }, 'Please select a previous forecast.<hr>');
+            printTo(target, message);
+          }
+          break;
+        }
         case 'move': {
           if (!playerIsGM(msg.playerid)) return;
           if (args[2] === s.install.code && args[3]) {
@@ -437,7 +481,7 @@ var Weather = Weather || (function () {
             state.Weather.install.code = null;
           } else {
             const secureString = getRandomString(32);
-            const message = _.reduce(s.database.biome, (memo, biome) => { memo += `[${biome.name}](!weather move ${secureString} ${biome.name})`; return memo; }, 'Please select the biome that your players are moving to.<br>');
+            const message = _.reduce(s.database.biome, (memo, biome) => { memo += getButton(biome.name, `!weather move ${secureString} ${biome.name}`); return memo; }, 'Please select the biome that your players are moving to.<br>');
             state.Weather.install.code = secureString;
             printTo(target, message);
           }
@@ -452,7 +496,7 @@ var Weather = Weather || (function () {
           if (!playerIsGM(msg.playerid)) return;
           const secureString = getRandomString(32);
           state.Weather.install.code = secureString;
-          printTo(target, `Are you sure you want to reset all information? <br>[Yes](!weather ${secureString}) [No](!weather decline)`);
+          printTo(target, 'Are you sure you want to reset all information? <br>' + getButton('Yes', `!weather ${secureString}`) + getButton('No', '!weather decline'));
           break;
         }
         case 'remove': {
@@ -480,7 +524,7 @@ var Weather = Weather || (function () {
           if (s.install.needed) {
             const secureString = getRandomString(32);
             state.Weather.install.code = secureString;
-            printTo(target, `Weather hasn't been fully installed yet. ${playerIsGM(msg.playerid) ? `Click this button to continue the process.<br>[Continue](!weather ${secureString})` : 'Message your GM to let them know!'}`);
+            printTo(target, `Weather hasn't been fully installed yet. ${(playerIsGM(msg.playerid) ? 'Click this button to continue the process.<br>' + getButton('Continue', `!weather ${secureString}`) : 'Message your GM to let them know!')}`);
           } else {
             printTo(target, getWeatherDescription(getLastForecast()));
           }
@@ -497,14 +541,14 @@ var Weather = Weather || (function () {
     }
     const args = input || [];
     const secureString = getRandomString(32);
-    const getQuestionOptions = (list, statement) => _.reduce(s.database[list], (memo, item) => { memo += `[${item.name}](!weather ${secureString} ${item.name}) `; return memo; }, `${statement}<hr>`);
+    const getQuestionOptions = (list, statement) => _.reduce(s.database[list], (memo, item) => { memo += getButton(`${item.name}`, `!weather ${secureString} ${item.name}`); return memo; }, `${statement}<hr>`);
     state.Weather.install.code = secureString;
     const biomeQuestion = getQuestionOptions('biome', 'Please select the biome that most closely resembles where your players are. This can be changed later.');
     const seasonQuestion = getQuestionOptions('season', 'Please select the season that your characters are experiencing. This script assumes you\'re starting at the beginning of a season.');
-    const windQuestion = `Please enter the current wind speed your players are experiencing in km/h.<hr>[Wind Speed (in km/h)](!weather ${secureString} ?{Please enter a positive speed in km/h|15})`;
-    const humidityQuestion = `Please enter the current humidity that your players are experiencing.<hr>[Humidity](!weather ${secureString} ?{Please enter a percent between 0 and 100 inclusive|25})`;
-    const precipitationQuestion = `Please enter how much rain has recently fallen in millimeters.<hr>[Amount of Precipitation (in mm)](!weather ${secureString} ?{Please enter a positive value in mm|0})`;
-    const confirmationStatement = `You said that the ${s.install.stageList[s.install.stageIndex]} is ${args[0]}. Is that what you wanted?<hr>[Yes](!weather ${secureString} true) [No](!weather ${secureString} false)`;
+    const windQuestion = 'Please enter the current wind speed your players are experiencing in km/h.<hr>' + getButton('Wind Speed (in km/h)', `!weather ${secureString} ?{Please enter a positive speed in km/h|15}`);
+    const humidityQuestion = 'Please enter the current humidity that your players are experiencing.<hr>' + getButton('Humidity', `!weather ${secureString} ?{Please enter a percent between 0 and 100 inclusive|25}`);
+    const precipitationQuestion = 'Please enter how much rain has recently fallen in millimeters.<hr>' + getButton('Amount of Precipitation (in mm)', `!weather ${secureString} ?{Please enter a positive amount of rain in mm|0}`);
+    const confirmationStatement = `You said that the ${s.install.stageList[s.install.stageIndex]} is ${args[0]}. Is that what you wanted?<hr>` + getButton('Yes', `!weather ${secureString} true`) + getButton('No', `!weather ${secureString} false`);
     const finishedStatement = '<h1 style="color:#56ABE8">Installation complete!</h1>Get your first weather description with the command <span style="color:#56ABE8">!weather</span>. If you\'ve made a mistake somewhere, you can fix it with the command <span style="color:#56ABE8">!weather set temperature:15</span>, replacing the 15 with your own value. If you need more help, just use <span style="color:#56ABE8">"!weather help"</span> to see the help menu.';
     // LOGIC BELOW - Confirmation ? Handle confirmation : Check what to do at each stage;
     if (state.Weather.install.tmp || state.Weather.install.tmp === 0) {
@@ -569,19 +613,18 @@ var Weather = Weather || (function () {
 
 // Handles all pausing, and changing of timestamps.
   const handlePause = function (pause) {
-    const s = state.Weather;
-    if (pause === s.pause.active) {
-      printTo('gm', `Weather is ${s.pause.active ? 'already' : 'not currently'} paused.`);
+    if (pause === state.Weather.pause.active) {
+      printTo('gm', `Weather is ${state.Weather.pause.active ? 'already' : 'not currently'} paused.`);
       return;
     }
     if (pause) {
-      s.pause.active = true;
-      s.pause.start = Date.now();
+      state.Weather.pause.active = true;
+      state.Weather.pause.start = Date.now();
       printTo('gm', 'Weather has been paused. You will only be able to retrieve the last weather effect until the resume command is received.');
     } else {
-      const timeDifference = Date.now() - s.pause.start;
-      modifyForecastTimes(timeDifference);
-      s.pause = new PauseObj();
+      state.Weather.pause.delay = Date.now() - state.Weather.pause.start;
+      state.Weather.pause.active = false;
+      state.Weather.pause.start = null;
       printTo('gm', 'Weather has resumed. You can now advance days and get updates again.');
     }
   };
