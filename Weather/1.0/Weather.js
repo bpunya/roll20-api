@@ -156,7 +156,7 @@ var Weather = Weather || (function () {
   };
 
 // Help message
-  const getHelp = function () {
+  const getHelp = function (isGm) {
     return '<div>' +
             '<strong><h1 style="text-align:left;color:#56ABE8">Weather</h1></strong>' +
             '<p style="text-align:left;font-size:75%;">The following is a list of all current settings.</p>' +
@@ -166,7 +166,7 @@ var Weather = Weather || (function () {
             '<ul><b>Automatic Weather Updates</b>:<br>' +
               `${state.Weather.autoAdvance ? 'Passage of time is observed' : 'Weather must be updated manually'}</ul>` +
             '<ul><b>Player Access</b>:<br>' +
-              `${state.Weather.gmOnly ? 'Players are not able to access any Weather functions' : 'Players can access some Weather functions'}</ul>` +
+              `${state.Weather.gmOnly ? 'Players can only view the weather' : 'Players can access some extra Weather functions'}</ul>` +
           '</div>' +
           '<div style="">' +
             '<p style="font-size:90%;">To use <span style="color:#56ABE8">Weather</span> as a macro or chat command, follow this format:<br>' +
@@ -399,10 +399,10 @@ var Weather = Weather || (function () {
 // Chat Handler //
   const handleChatInput = function (msg) {
     if (msg.type !== 'api' || (state.Weather.gmOnly && !playerIsGM(msg.playerid))) return;
-    const s = state.Weather;
     const args = msg.content.split(/\s/);
-    const target = playerIsGM(msg.playerid) ? msg.who.replace(/( \(GM\)$)/g, '') : msg.who;
     if (args[0].toLowerCase() === '!weather') {
+      const s = state.Weather;
+      const user = playerIsGM(msg.playerid) ? msg.who.replace(/( \(GM\)$)/g, '') : msg.who;
       switch (args[1]) {
         case state.Weather.install.code: {
           if (!playerIsGM(msg.playerid)) return;
@@ -412,18 +412,18 @@ var Weather = Weather || (function () {
         case 'add': {
           if (!playerIsGM(msg.playerid)) return;
           if (args[2]) createNewEffect(...args.slice(2));
-          else printTo(target, 'I didn\'t see what you wanted to add.');
+          else printTo(user, 'I didn\'t see what you wanted to add.');
           break;
         }
         case 'advance': {
           if (!playerIsGM(msg.playerid)) return;
           if (args[2] && args[2] > 0) printTo('chat', getWeatherDescription(advanceWeather(args[2])));
-          else printTo(target, 'You can\'t advance backwards (sadly).');
+          else printTo(user, 'You can\'t advance backwards (sadly).');
           break;
         }
         case 'clear': {
           if (!playerIsGM(msg.playerid)) return;
-          printTo(target, 'Clearing weather history!');
+          printTo(user, 'Clearing weather history!');
           state.Weather.database.forecasts = [getLastForecast()];
           break;
         }
@@ -452,42 +452,41 @@ var Weather = Weather || (function () {
         case 'decline': {
           if (!playerIsGM(msg.playerid) || !s.install.code) return;
           state.Weather.install.code = null;
-          printTo(target, 'Action declined.');
+          printTo(user, 'Action declined.');
           break;
         }
         case 'help': {
-          printTo(target, getHelp());
+          if (!playerIsGM(msg.playerid) && state.Weather.gmOnly) return;
+          printTo(user, getHelp(playerIsGM(msg.playerid)));
           break;
         }
         case 'history': {
+          if (!playerIsGM(msg.playerid) && state.Weather.gmOnly) return;
           if (parseFloat(args[2]).toString() === args[2]) {
             const pastForecast = _.find(state.Weather.database.forecasts, forecast => forecast.time === parseFloat(args[2]));
             if (pastForecast) {
-              printTo(target, getWeatherDescription(pastForecast));
+              printTo(user, getWeatherDescription(pastForecast));
             } else {
-              printTo(target, 'Sorry! We couldn\'t find the forecast you wanted.');
+              printTo(user, 'Sorry! We couldn\'t find the forecast you wanted.');
             }
           } else {
             const message = _.reduce(state.Weather.database.forecasts, (memo, forecast) => { memo += getButton(`Day ${forecast.day}`, `!weather history ${forecast.time}`); return memo; }, '<h1 style="color:#56ABE8">Past Forecasts</h1> Please select a previous forecast to see what happened on that day.<hr>');
-            printTo(target, message);
+            printTo(user, message);
           }
           break;
         }
         case 'move': {
           if (!playerIsGM(msg.playerid)) return;
-          if (args[2] === s.install.code && args[3]) {
-            if (_.find(s.database.biome, item => item.name === args[3])) {
-              s.biome = _.find(s.database.biome, item => item.name === args[3]);
-              printTo('gm', `Changing the biome to ${args[3]}.`);
+          if (args[2]) {
+            if (_.find(s.database.biome, item => item.name === args[2])) {
+              s.biome = _.find(s.database.biome, item => item.name === args[2]);
+              printTo('gm', `Changing the biome to ${args[2]}.`);
             } else {
-              printTo(target, `The ${args[3]} biome doesn't exist.`);
+              printTo(user, `The ${args[2]} biome doesn't exist.`);
             }
-            state.Weather.install.code = null;
           } else {
-            const secureString = getRandomString(32);
-            const message = _.reduce(s.database.biome, (memo, biome) => { memo += getButton(biome.name, `!weather move ${secureString} ${biome.name}`); return memo; }, 'Please select the biome that your players are moving to.<br>');
-            state.Weather.install.code = secureString;
-            printTo(target, message);
+            const message = _.reduce(s.database.biome, (memo, biome) => { memo += getButton(biome.name, `!weather move ${biome.name}`); return memo; }, 'Please select the biome that your players are moving to.<br>');
+            printTo(user, message);
           }
           break;
         }
@@ -500,7 +499,7 @@ var Weather = Weather || (function () {
           if (!playerIsGM(msg.playerid)) return;
           const secureString = getRandomString(32);
           state.Weather.install.code = secureString;
-          printTo(target, 'Are you sure you want to reset all information? <br>' + getButton('Yes', `!weather ${secureString}`) + getButton('No', '!weather decline'));
+          printTo(user, 'Are you sure you want to reset all information? <br>' + getButton('Yes', `!weather ${secureString}`) + getButton('No', '!weather decline'));
           break;
         }
         case 'remove': {
@@ -516,7 +515,7 @@ var Weather = Weather || (function () {
         case 'set': {
           if (!playerIsGM(msg.playerid)) return;
           if (args[2]) modifyLatestForecast(args.slice(2));
-          else printTo(target, 'I didn\'t see what you wanted to change.');
+          else printTo(user, 'I didn\'t see what you wanted to change.');
           break;
         }
         case 'update': {
@@ -528,9 +527,9 @@ var Weather = Weather || (function () {
           if (s.install.needed) {
             const secureString = getRandomString(32);
             state.Weather.install.code = secureString;
-            printTo(target, `Weather hasn't been fully installed yet. ${(playerIsGM(msg.playerid) ? 'Click this button to continue the process.<br>' + getButton('Continue', `!weather ${secureString}`) : 'Message your GM to let them know!')}`);
+            printTo(user, `Weather hasn't been fully installed yet. ${(playerIsGM(msg.playerid) ? 'Click this button to continue the process.<br>' + getButton('Continue', `!weather ${secureString}`) : 'Message your GM to let them know!')}`);
           } else {
-            printTo(target, getWeatherDescription(getLastForecast()));
+            printTo(user, getWeatherDescription(getLastForecast()));
           }
         }
       }
