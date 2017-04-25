@@ -40,7 +40,7 @@
             "name": "Maximum Forecasts Kept in History",
             "type": "number",
             "default": "50",
-            "description": "This number represents the amount of records kept in history. Defaults to 30. Minimum of 5. Maximum of 150."
+            "description": "This number represents the amount of records kept in history. Defaults to 30. Minimum of 5. Maximum of 700."
         }
     ],
     "roll20userid": "558646",
