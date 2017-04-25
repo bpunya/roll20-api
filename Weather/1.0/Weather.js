@@ -14,10 +14,26 @@ var Weather = Weather || (function () {
         max: b[0],
         min: b[1],
         variance: b[2],
+        shift: b[3] || 0,
       };
-      this.windSpeed = c;
-      this.humidity = d;
-      this.precipitation = e;
+      this.windSpeed = {
+        max: c[0],
+        min: c[1],
+        variance: c[2],
+        shift: c[3] || 0,
+      };
+      this.humidity = {
+        max: d[0],
+        min: d[1],
+        variance: d[2],
+        shift: d[3] || 0,
+      };
+      this.precipitation = {
+        max: e[0],
+        min: e[1],
+        variance: e[2],
+        shift: e[3] || 0,
+      };
     }
   }
 
@@ -33,15 +49,16 @@ var Weather = Weather || (function () {
   }
 
   class Forecast {
-    constructor(statistics, daysSinceSeed) {
-      this.day = daysSinceSeed;
-      this.time = Date.now();
+    constructor(a, b, c) {
+      this.day = b;
+      this.time = c || Date.now();
       this.stats = {
-        temperature: statistics.temperature || 0,
-        windSpeed: statistics.windSpeed || 0,
-        humidity: statistics.humidity || 0,
-        precipitation: statistics.precipitation || 0,
+        temperature: a.temperature || 0,
+        windSpeed: a.windSpeed || 0,
+        humidity: a.humidity || 0,
+        precipitation: a.precipitation || 0,
       };
+      this.description = () => getWeatherDescription(this);
     }
   }
 
@@ -101,7 +118,7 @@ var Weather = Weather || (function () {
   }
 
   const SEASON_LIST = [{ name: 'Spring', id: 7 }, { name: 'Summer', id: 1 }, { name: 'Fall', id: 3 }, { name: 'Winter', id: 5 }];
-  const BIOME_LIST = [new Biome('Metropolis', [25, -20, 5], 25, 25, 25)];
+  const BIOME_LIST = [new Biome('Metropolis', [25, -20, 5], [50, 0, 25], [100, 0, 25], [150, 0, 25])];
   const WEATHER_LIST = [new WeatherEffect('raining', 25, 20, 100, 100), new WeatherEffect('snowing', -10, 20, 50, 100), new WeatherEffect('foggy', 10, 0, 100, 50), new WeatherEffect('dusty', 20, 15, 0, 0), new WeatherEffect('hazy', 35, 0, 50, 0), new WeatherEffect('calm', 10, 5, 5, 5), new WeatherEffect('bitterly chilly', -30, 30, 0, 0), new WeatherEffect('swelteringly hot', 50, 0, 0, 0)];
   const CLOUD_LIST = [new WeatherEffect('overcast', 0, 15, 75, 75), new WeatherEffect('clear', 0, 20, 0, 0), new WeatherEffect('partly cloudy', 0, 20, 25, 25), new WeatherEffect('mostly cloudy', 0, 15, 35, 35), new WeatherEffect('still', 0, 0, 0, 0)];
   const PHENOMENA_LIST = [new WeatherEffect('thunderstorm', 20, 50, 100, 100), new WeatherEffect('tornado', 40, 100, 100, 100), new WeatherEffect('hail storm', 0, 50, 33, 100)];
@@ -216,17 +233,20 @@ var Weather = Weather || (function () {
 
 // Creates a new WeatherEffect object and pushes it to the proper state database
   const createNewEffect = function (type, name, temperature, windSpeed, humidity, precipitation) {
+    let inputArray;
     switch (type) {
       case 'biome': {
-        if ([windSpeed, humidity, precipitation].every(value => parseFloat(value).toString() === value)) {
-          const inputArray = [windSpeed, humidity, precipitation].map(value => parseFloat(value));
-          const temperatureArray = JSON.parse(temperature);
-          if (Array.isArray(temperatureArray) && temperatureArray.every(value => parseFloat(value) === value)) {
-            const newEffect = new WeatherEffect(name, temperatureArray, ...inputArray);
-            state.Weather.database[type].push(newEffect);
-            printTo('gm', `Adding a new ${type} called ${name}.`)
-            break;
-          }
+        try {
+          inputArray = JSON.parse(`[${temperature}, ${windSpeed}, ${humidity}, ${precipitation}]`);
+        } catch (e) {
+          printTo('gm', 'One of the values entered was invalid.');
+          break;
+        }
+        if (inputArray.every(stat => stat.every(value => parseFloat(value) === value))) {
+          const newEffect = new WeatherEffect(name, ...inputArray);
+          state.Weather.database[type].push(newEffect);
+          printTo('gm', `Adding a new ${type} called ${name}.`)
+          break;
         }
         printTo('gm', 'One of the values entered was invalid.');
         break;
@@ -234,14 +254,19 @@ var Weather = Weather || (function () {
       case 'weather':
       case 'cloud':
       case 'phenomena': {
-        if ([temperature, windSpeed, humidity, precipitation].every(value => parseFloat(value).toString() === value)) {
-          const inputArray = [temperature, windSpeed, humidity, precipitation].map(value => parseFloat(value));
+        try {
+          inputArray = JSON.parse(`[${temperature}, ${windSpeed}, ${humidity}, ${precipitation}]`);
+        } catch (e) {
+          printTo('gm', 'One of the values entered was not a number.');
+          break;
+        }
+        if (inputArray.every(value => parseFloat(value) === value)) {
           const newEffect = new WeatherEffect(name, ...inputArray);
           state.Weather.database[type].push(newEffect);
-          printTo('gm', `Adding a new ${type} called ${name}.`)
-        } else {
-          printTo('gm', 'One of the values entered was not a number.');
+          printTo('gm', `Adding a new ${type} called ${name}.`);
+          break;
         }
+        printTo('gm', 'One of the values entered was not a number.');
         break;
       }
       default: {
@@ -258,16 +283,16 @@ var Weather = Weather || (function () {
     const daysSinceLast = parseInt(days, 10) || getDaysElapsed(prev.time, Date.now());
     const seasonDay = prev.day + daysSinceLast;
     const trend = {
-      temperature: getSeasonTrend(seasonDay),
-      windSpeed: getValueChange(s.biome.windSpeed, s.biome.windSpeed, daysSinceLast),
-      humidity: getValueChange(s.biome.humidity, s.biome.humidity, daysSinceLast),
-      precipitation: getValueChange(s.biome.precipitation, s.biome.precipitation, daysSinceLast),
+      temperature: getSeasonTrend('temperature', seasonDay),
+      windSpeed: getSeasonTrend('windSpeed', seasonDay),
+      humidity: getSeasonTrend('humidity', seasonDay),
+      precipitation: getSeasonTrend('precipitation', seasonDay),
     };
     const newStats = {
       temperature: getValueChange((prev.stats.temperature + trend.temperature) / 2, s.biome.temperature.variance, daysSinceLast),
-      windSpeed: getValueChange(prev.stats.windSpeed * 0.5 + trend.windSpeed, s.biome.windSpeed, daysSinceLast),
-      humidity: getValueChange(prev.stats.humidity * 0.5 + trend.humidity, s.biome.humidity, daysSinceLast),
-      precipitation: getValueChange(prev.stats.precipitation * 0.5 + trend.precipitation, s.biome.precipitation, daysSinceLast),
+      windSpeed: getValueChange((prev.stats.windSpeed + trend.windSpeed) / 2, s.biome.windSpeed, daysSinceLast),
+      humidity: getValueChange((prev.stats.humidity + trend.humidity) / 2, s.biome.humidity, daysSinceLast),
+      precipitation: getValueChange((prev.stats.precipitation + trend.precipitation) / 2, s.biome.precipitation, daysSinceLast),
     };
     const currentWeather = new Forecast(verifyForecastStats(newStats), seasonDay);
     addToDatabase(currentWeather);
@@ -275,9 +300,9 @@ var Weather = Weather || (function () {
   };
 
 // Changes the stats for the latest weather forecast (if valid)
-  const modifyLatestForecast = function (arg) {
+  const modifyLatestForecast = function (args) {
     const s = state.Weather;
-    const parsedArgs = _.chain(arg)
+    const parsedArgs = _.chain(args)
                         .map((item) => { const stat = item.split(':'); return { name: stat[0], value: stat[1] }; })
                         .filter(stat => _.contains(['temperature', 'windSpeed', 'humidity', 'precipitation'], stat.name))
                         .reject(stat => parseFloat(stat.value).toString() !== stat.value)
@@ -333,13 +358,14 @@ var Weather = Weather || (function () {
   };
 
 // Returns a value based on a cosine curve where wave period is equal to seasonDuration
-  const getSeasonTrend = function (days) {
+  const getSeasonTrend = function (type, day) {
     const s = state.Weather;
-    const tempSkew = (s.biome.temperature.max + s.biome.temperature.min) / 2;
-    const tempRange = (s.biome.temperature.max - s.biome.temperature.min) / 2;
-    const time = ((days + s.daySeed) / s.seasonDuration) * (Math.PI / 2);
-    const seedShift = (s.seasonSeed * (Math.PI / 4));
-    return tempSkew + (tempRange * Math.cos(time + seedShift));
+    const skew = (s.biome[type].max + s.biome[type].min) / 2;
+    const range = (s.biome[type].max - s.biome[type].min) / 2;
+    const seedShift = s.seasonSeed * (Math.PI / 4);
+    const biomeShift = (s.biome[type].shift * 2 * (Math.PI / 4)) || 0;
+    const time = ((day + s.daySeed) / s.seasonDuration) * (Math.PI / 2);
+    return skew + (range * Math.cos(time + seedShift + biomeShift));
   };
 
 // Does some math to figure out how temp cold/warm something is, then returns the hex code for it.
@@ -380,7 +406,7 @@ var Weather = Weather || (function () {
       temperature: Math.floor(stats.temperature),
       windSpeed: Math.max(Math.floor(stats.windSpeed), 0),
       humidity: Math.max(Math.min(Math.floor(stats.humidity), 100), 0),
-      precipitation: Math.max(Math.floor(stats.precipitation), 0),
+      precipitation: Math.max(Math.floor(stats.precipitation * stats.humidity / 100), 0),
     };
   };
 
@@ -390,6 +416,7 @@ var Weather = Weather || (function () {
 
 // Advances time if Weather isn't paused, and returns the relevant weather object.
   const advanceWeather = function (args) {
+    let returned;
     const s = state.Weather;
     const days = parseInt(args, 10);
     const daysSinceLast = getDaysElapsed(getLastForecast().time, Date.now());
@@ -404,7 +431,14 @@ var Weather = Weather || (function () {
 
 // Returns the latest weather forecast
   const getLastForecast = function () {
-    return state.Weather.database.forecasts.slice(-1)[0];
+    const o = state.Weather.database.forecasts.slice(-1)[0];
+    return new Forecast(o.stats, o.day, o.time);
+  };
+
+// Returns a specific forecast from state
+  const getSpecificForecast = function (input) {
+    const o = _.find(state.Weather.database.forecasts, forecast => forecast.day === input);
+    return o ? new Forecast(o.stats, o.day, o.time) : undefined;
   };
 
 // Checks to see if we need to update. If yes, return a new forecast. Otherwise return the latest.
@@ -716,9 +750,9 @@ var Weather = Weather || (function () {
     CheckInstall: checkInstall,
     RegisterEventHandlers: registerEventHandlers,
     Advance: advanceWeather,
-    GetLatestForecast: getLastForecast,
-    GetUpdatedForecast: getUpdatedForecast,
-    GetDescription: getWeatherDescription,
+    GetLatest: getLastForecast,
+    GetUpdate: getUpdatedForecast,
+    Get: getSpecificForecast,
   };
 }());
 
