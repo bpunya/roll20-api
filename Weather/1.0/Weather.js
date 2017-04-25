@@ -151,10 +151,6 @@ var Weather = Weather || (function () {
     return `<a href="${link}" style="${buttonStyle}">${message}</a>`;
   };
 
-  const getColourCode = function (temperature) {
-    return '#000';
-  };
-
 // Help message
   const getHelp = function (isGm) {
     return '<div>' +
@@ -172,12 +168,7 @@ var Weather = Weather || (function () {
             '<p style="font-size:90%;">To use <span style="color:#56ABE8">Weather</span> as a macro or chat command, follow this format:<br>' +
             '<span style="color:#56ABE8">!weather</span><br>' +
             'or<br>' +
-            '<span style="color:#56ABE8">!weather advance 7</span></p>' +
-          '</div>' +
-          '<div>' +
-            '<p style="font-size:90%;"> To change one or more of <span style="color:#56ABE8">Weather</span>\'s settings, enter !weather ' +
-            'before one or more of the commands listed above, followed by a value.' +
-            '</p>' +
+            '<span style="color:#56ABE8">!weather [option [optionValue]]</span></p>' +
           '</div>';
   };
 
@@ -191,11 +182,11 @@ var Weather = Weather || (function () {
     const temperature = f.temperature < 5 ? 'chilly' : f.temperature < 15 ? 'mild' : f.temperature < 30 ? 'hot' : 'blisteringly hot';
     const windSpeed = f.windSpeed < 5 ? 'very light' : f.windSpeed < 15 ? 'light' : f.windSpeed < 30 ? 'moderate' : 'heavi';
     const precipitation = f.precipitation < 10 ? '' : f.precipitation < 30 ? 'lightly' : f.precipitation < 75 ? 'heavily' : f.precipitation < 150 ? 'non-stop' : 'like a monsoon';
-    const headerColour = getColourCode(forecast.temperature);
+    const headerColour = getTemperatureColour(forecast.temperature);
     const header = `It's ${majorCondition} and ${minorCondition}`;
-    const textColour = getColourCode(forecast.temperature);
+    const textColour = getTemperatureColour(forecast.temperature);
     const text = `It is ${temperature} and ${humidity} here, and the wind blows ${windSpeed}ly against you. ${precipitation ? `It has been raining ${precipitation} for the last while.` : ''} ${phenomena ? `Because of current conditions, a ${phenomena} is likely to occur if it isn't already happening.` : 'Thankfully nothing worse is happening right now.'}`;
-    return `<h1 style="color:#56ABE8">${header}</h1>${text}`
+    return `<h1 style="color:${headerColour}">${header}</h1><p style="color:${textColour}">${text}</p>`
   };
 
   const printTo = function (target, content) {
@@ -215,11 +206,12 @@ var Weather = Weather || (function () {
 
 // Adds the forecast object to state after checking some stuff
   const addToDatabase = function (forecast) {
-    if (state.Weather.database.forecasts.length >= state.Weather.maxHistory) {
-      const toTrim = state.Weather.database.forecasts.length - state.Weather.maxHistory + 1;
-      state.Weather.database.forecasts = [state.Weather.database.forecasts[0], ...state.Weather.database.forecasts.slice(toTrim + 1)];
+    const s = state.Weather;
+    if (s.database.forecasts.length >= s.maxHistory) {
+      const toTrim = s.database.forecasts.length - s.maxHistory + 1;
+      s.database.forecasts = [...s.database.forecasts.slice(toTrim)];
     }
-    state.Weather.database.forecasts.push(forecast);
+    s.push(forecast);
   };
 
 // Creates a new WeatherEffect object and pushes it to the proper state database
@@ -295,7 +287,7 @@ var Weather = Weather || (function () {
     const message = parsedArgs.reduce((memo, stat) => { memo += ` ${stat.name} to ${stat.value}`; return memo; }, 'Changing the following values on the latest forecast:');
     const newStats = parsedArgs.reduce((memo, stat) => { memo[stat.name] = parseFloat(stat.value); return memo; }, {});
     printTo('gm', message);
-    state.Weather.database.forecasts[s.database.forecasts.length - 1]['stats'] = Object.assign(getLastForecast()['stats'], newStats);
+    s.database.forecasts[s.database.forecasts.length - 1].stats = Object.assign(getLastForecast().stats, newStats);
   };
 
 /**************************************************************************************************/
@@ -317,6 +309,19 @@ var Weather = Weather || (function () {
     return undefined;
   };
 
+// Returns a hex code given a percentage from 0 to 100;
+  const getColourHex = function (percent) {
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    if(percent < 50) {
+      b = 255 * ((percent - 50) / 50);
+    } else if (percent > 50) {
+      r = 255 * (Math.abs(percent - 50) / 50);
+    }
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  };
+
 // Returns the amount of full in-game days elapsed between the two inputs
   const getDaysElapsed = function (originalTime, newTime) {
     return Math.floor((newTime - originalTime - state.Weather.pause.delay) / TIME_PER_DAY);
@@ -334,6 +339,23 @@ var Weather = Weather || (function () {
     const time = ((days + s.daySeed) / s.seasonDuration) * (Math.PI / 2);
     const seedShift = (s.seasonSeed * (Math.PI / 4));
     return tempSkew + (tempRange * Math.cos(time + seedShift));
+  };
+
+// Does some math to figure out how temp cold/warm something is, then returns the hex code for it.
+  const getTemperatureColour = function (temperature) {
+    const coldStart = 5;
+    const coldMax = -20;
+    const hotStart = 15;
+    const hotMax = 40;
+    let percent = 50;
+    if (temperature <= coldStart) {
+      percent = temperature <= coldMax ? 0
+        : 50 / (coldStart - coldMax) * temperature + 50 - 50 / (coldStart - coldMax) * coldStart;
+    } else if (temperature >= hotStart) {
+      percent = temperature >= hotMax ? 100
+        : 50 / (hotMax - hotStart) * temperature + 50 - 50 / (hotMax - hotStart) * hotStart;
+    }
+    return getColourHex(percent);
   };
 
 // Returns a new value depending on the amount of iterations, trend and original
@@ -369,7 +391,7 @@ var Weather = Weather || (function () {
   const advanceWeather = function (args) {
     const s = state.Weather;
     const days = parseInt(args, 10);
-    const daysSinceLast = getDaysElapsed(getLastForecast()['time'], Date.now());
+    const daysSinceLast = getDaysElapsed(getLastForecast(), Date.now());
     if (!s.pause.active && days > 0) {
       if (days > daysSinceLast) {
         return createNewForecast(days);
@@ -387,7 +409,7 @@ var Weather = Weather || (function () {
 // Checks to see if we need to update. If yes, return a new forecast. Otherwise return the latest.
   const getUpdatedForecast = function () {
     const s = state.Weather;
-    const daysSinceLast = getDaysElapsed(getLastForecast()['time'], Date.now());
+    const daysSinceLast = getDaysElapsed(getLastForecast().time, Date.now());
     if (!s.pause.active && s.autoAdvance && daysSinceLast > 0) return createNewForecast(daysSinceLast);
     return getLastForecast();
   };
@@ -404,9 +426,9 @@ var Weather = Weather || (function () {
       const s = state.Weather;
       const user = playerIsGM(msg.playerid) ? msg.who.replace(/( \(GM\)$)/g, '') : msg.who;
       switch (args[1]) {
-        case state.Weather.install.code: {
+        case s.install.code: {
           if (!playerIsGM(msg.playerid)) return;
-          handleInstall(args.slice(2));
+          handleInstall(args[2]);
           break;
         }
         case 'add': {
@@ -424,7 +446,7 @@ var Weather = Weather || (function () {
         case 'clear': {
           if (!playerIsGM(msg.playerid)) return;
           printTo(user, 'Clearing weather history!');
-          state.Weather.database.forecasts = [getLastForecast()];
+          s.database.forecasts = [getLastForecast()];
           break;
         }
         case 'debug': {
@@ -432,45 +454,44 @@ var Weather = Weather || (function () {
           switch (args[2]) {
             case 'reset': {
               resetState();
-              log(state.Weather);
               break;
             }
             case 'forecast': {
-              log(state.Weather.database.forecasts[state.Weather.database.forecasts.length - 1])
+              log(s.database.forecasts[s.database.forecasts.length - 1])
               break;
             }
             case 'history': {
-              log(state.Weather.database.forecasts);
+              log(s.database.forecasts);
               break;
             }
             default: {
-              log(state.Weather);
+              log(s);
             }
           }
           break;
         }
         case 'decline': {
           if (!playerIsGM(msg.playerid) || !s.install.code) return;
-          state.Weather.install.code = null;
+          s.install.code = null;
           printTo(user, 'Action declined.');
           break;
         }
         case 'help': {
-          if (!playerIsGM(msg.playerid) && state.Weather.gmOnly) return;
+          if (!playerIsGM(msg.playerid) && s.gmOnly) return;
           printTo(user, getHelp(playerIsGM(msg.playerid)));
           break;
         }
         case 'history': {
-          if (!playerIsGM(msg.playerid) && state.Weather.gmOnly) return;
-          if (parseFloat(args[2]).toString() === args[2]) {
-            const pastForecast = _.find(state.Weather.database.forecasts, forecast => forecast.time === parseFloat(args[2]));
+          if (!playerIsGM(msg.playerid) && s.gmOnly) return;
+          if (args[2]) {
+            const pastForecast = _.find(s.database.forecasts, forecast => forecast.time === parseFloat(args[2]));
             if (pastForecast) {
               printTo(user, getWeatherDescription(pastForecast));
             } else {
               printTo(user, 'Sorry! We couldn\'t find the forecast you wanted.');
             }
           } else {
-            const message = _.reduce(state.Weather.database.forecasts, (memo, forecast) => { memo += getButton(`Day ${forecast.day}`, `!weather history ${forecast.time}`); return memo; }, '<h1 style="color:#56ABE8">Past Forecasts</h1> Please select a previous forecast to see what happened on that day.<hr>');
+            const message = _.reduce(s.database.forecasts, (memo, forecast) => { memo += getButton(`Day ${forecast.day}`, `!weather history ${forecast.time}`, 'width: 45px;'); return memo; }, '<h1 style="color:#56ABE8">Past Forecasts</h1> Please select a previous forecast to see what happened on that day.<hr>');
             printTo(user, message);
           }
           break;
@@ -498,8 +519,8 @@ var Weather = Weather || (function () {
         case 'reinstall': {
           if (!playerIsGM(msg.playerid)) return;
           const secureString = getRandomString(32);
-          state.Weather.install.code = secureString;
-          printTo(user, 'Are you sure you want to reset all information? <br>' + getButton('Yes', `!weather ${secureString}`) + getButton('No', '!weather decline'));
+          s.install.code = secureString;
+          printTo(user, 'Are you sure you want to reset all information? <br>' + getButton('Yes', `!weather ${secureString}`, 'float:left;') + getButton('No', '!weather decline', 'float:right;'));
           break;
         }
         case 'remove': {
@@ -526,7 +547,7 @@ var Weather = Weather || (function () {
         default: {
           if (s.install.needed) {
             const secureString = getRandomString(32);
-            state.Weather.install.code = secureString;
+            s.install.code = secureString;
             printTo(user, `Weather hasn't been fully installed yet. ${(playerIsGM(msg.playerid) ? 'Click this button to continue the process.<br>' + getButton('Continue', `!weather ${secureString}`) : 'Message your GM to let them know!')}`);
           } else {
             printTo(user, getWeatherDescription(getLastForecast()));
@@ -538,13 +559,9 @@ var Weather = Weather || (function () {
 
 // Handles all installation stages
   const handleInstall = function (input) {
+    if (!state.Weather.install.needed) resetState();
     const s = state.Weather;
-    if (!s.install.needed) {
-      resetState();
-    }
-    const args = input || [];
     const secureString = getRandomString(32);
-    state.Weather.install.code = secureString;
     const getQuestionOptions = (list, statement) => _.reduce(s.database[list], (memo, item) => { memo += getButton(`${item.name}`, `!weather ${secureString} ${item.name}`); return memo; }, `${statement}<hr>`);
     const reply = {
       biome: getQuestionOptions('biome', 'Please select the biome that most closely resembles where your players are. This can be changed later.'),
@@ -553,47 +570,45 @@ var Weather = Weather || (function () {
       'wind speed': 'Please enter the current wind speed your players are experiencing in km/h.<hr>' + getButton('Wind Speed (in km/h)', `!weather ${secureString} ?{Please enter a positive speed in km/h|15}`),
       'humidity percentage': 'Please enter the current humidity that your players are experiencing.<hr>' + getButton('Humidity', `!weather ${secureString} ?{Please enter a percent between 0 and 100 inclusive|25}`),
       'amount of precipitation': 'Please enter how much rain has recently fallen in millimeters.<hr>' + getButton('Amount of Precipitation (in mm)', `!weather ${secureString} ?{Please enter a positive amount of rain in mm|0}`),
-      confirmation: `You said that the ${s.install.stageList[s.install.stageIndex]} is ${args[0]}. Is that what you wanted?<hr>` + getButton('Yes', `!weather ${secureString} true`) + getButton('No', `!weather ${secureString} false`),
+      confirmation: `You said that the ${stage} is ${input}. Is that what you wanted?<hr>` + getButton('Yes', `!weather ${secureString} accept`) + getButton('No', `!weather ${secureString} decline`),
       finished: '<h1 style="color:#56ABE8">Installation complete!</h1>Get your first weather description with the command <span style="color:#56ABE8">!weather</span>. If you\'ve made a mistake somewhere, you can fix it with the command <span style="color:#56ABE8">!weather set temperature:15</span>, replacing the 15 with your own value. If you need more help, just use <span style="color:#56ABE8">"!weather help"</span> to see the help menu.',
     };
-    // LOGIC BELOW - Confirmation ? Handle confirmation : Check what to do at each stage;
-    if (state.Weather.install.tmp || state.Weather.install.tmp === 0) {
-      if (args[0] === 'true') {
-        let stage = s.install.stageList[s.install.stageIndex];
-        state.Weather.install[stage] = state.Weather.install.tmp;
-        state.Weather.install.tmp = null;
-        state.Weather.install.stageIndex += 1;
-        stage = state.Weather.install.stageList[state.Weather.install.stageIndex];
+    s.install.code = secureString;
+    let stage = s.install.stageList[s.install.stageIndex];
+    // Waiting on Confirmation ? Handle confirmation : Check what to do at each stage;
+    if (s.install.tmp || s.install.tmp === 0) {
+      if (input === 'accept') {
+        s.install[stage] = s.install.tmp;
+        s.install.tmp = null;
+        s.install.stageIndex += 1;
+        stage = s.install.stageList[s.install.stageIndex];
         if (stage) {
           printTo('gm', reply[stage]);
         } else {
-          state.Weather.biome = state.Weather.install.biome;
-          state.Weather.seasonSeed = state.Weather.install.season.id;
-          state.Weather.daySeed = state.Weather.install.day;
+          s.biome = s.install.biome;
+          s.seasonSeed = s.install.season.id;
+          s.daySeed = s.install.day;
+          s.install.needed = false;
+          s.install.code = null;
           const stats = {
-            temperature: getSeasonTrend(0),
-            windSpeed: state.Weather.install['wind speed'],
-            humidity: state.Weather.install['humidity percentage'],
-            precipitation: state.Weather.install['amount of precipitation'],
+            temperature: getValueChange(getSeasonTrend(0), s.biome.temperature.variance, 1),
+            windSpeed: s.install['wind speed'],
+            humidity: s.install['humidity percentage'],
+            precipitation: s.install['amount of precipitation'],
           };
           addToDatabase(new Forecast(verifyForecastStats(stats), 0));
-          state.Weather.install.needed = false;
-          state.Weather.install.code = null;
           printTo('gm', reply.finished);
         }
-      } else {
-        state.Weather.install.tmp = null;
-        const stage = s.install.stageList[s.install.stageIndex];
+      } else if (input === 'decline') {
+        s.install.tmp = null;
         printTo('gm', reply[stage]);
-      }
-    // End of if(WAITING ON CONFIRMATION);
+      } // End of if(WAITING ON CONFIRMATION);
     } else {
-      const stage = s.install.stageList[s.install.stageIndex];
       switch (stage) {
         case 'biome':
         case 'season': {
-          if (_.find(s.database[stage], item => item.name === args[0])) {
-            state.Weather.install.tmp = _.find(s.database[stage], item => item.name === args[0]);
+          if (_.find(s.database[stage], item => item.name === input)) {
+            s.install.tmp = _.find(s.database[stage], item => item.name === input);
             printTo('gm', reply.confirmation);
           } else {
             printTo('gm', reply[stage]);
@@ -604,8 +619,8 @@ var Weather = Weather || (function () {
         case 'wind speed':
         case 'humidity percentage':
         case 'amount of precipitation': {
-          if (parseFloat(args[0]).toString() === args[0] && parseFloat(args[0]) >= 0 && (stage !== 'humidity percentage' || parseFloat(args[0]) <= 100)) {
-            state.Weather.install.tmp = parseFloat(args[0]);
+          if (parseFloat(input).toString() === input && parseFloat(input) >= 0 && (stage !== 'humidity percentage' || parseFloat(input) <= 100)) {
+            s.install.tmp = parseFloat(input);
             printTo('gm', reply.confirmation);
           } else {
             printTo('gm', reply[stage]);
@@ -618,23 +633,23 @@ var Weather = Weather || (function () {
 
 // Handles all pausing, and changing of timestamps.
   const handlePause = function (pause) {
-    if (pause === state.Weather.pause.active) {
-      printTo('gm', `Weather is ${state.Weather.pause.active ? 'already' : 'not currently'} paused.`);
+    const s = state.Weather;
+    if (pause === s.pause.active) {
+      printTo('gm', `Weather is ${s.pause.active ? 'already' : 'not currently'} paused.`);
       return;
     }
     if (pause) {
-      state.Weather.pause.active = true;
-      state.Weather.pause.start = Date.now();
+      s.pause.start = Date.now();
       printTo('gm', 'Weather has been paused. You will only be able to retrieve the last weather effect until the resume command is received.');
     } else {
-      state.Weather.pause.delay += Date.now() - state.Weather.pause.start;
-      state.Weather.pause.active = false;
-      state.Weather.pause.start = null;
+      s.pause.delay += Date.now() - s.pause.start;
+      s.pause.start = null;
       printTo('gm', 'Weather has resumed. You can now advance days and get updates again.');
     }
+    s.pause.active = !s.pause.active;
   };
 
-// This function mimics a Quartile Function
+// This function mimics a Quartile Function. IT IS MAGIC.
   const normalInverse = function (percentile, mean, deviation) {
   // Taken from: https://gist.github.com/kmpm/1211922/
     if ([percentile, mean, deviation].find(arg => _.isNaN(arg))) {
@@ -687,6 +702,7 @@ var Weather = Weather || (function () {
 
   const resetState = function () {
     state.Weather = new StateObj();
+    log('Weather -- State has been reset!');
   };
 
 // Register event handlers
