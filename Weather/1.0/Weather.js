@@ -438,8 +438,7 @@ var Weather = Weather || (function () {
       return advanceWeather(input);
     } catch (e) {
       let error = e.stack.split(/\n/).join('');
-      log('Weather -- advanceWeather encountered an error.')
-      log(error.substr(0, error.indexOf('eval at')) + '...)');
+      log(`Weather.Advance() encountered an error -- ${error.substr(0, error.indexOf('eval at'))}...)`);
       return undefined;
     }
   };
@@ -449,8 +448,7 @@ var Weather = Weather || (function () {
       return getLastForecast();
     } catch (e) {
       let error = e.stack.split(/\n/).join('');
-      log('Weather -- getLastForecast encountered an error.')
-      log(error.substr(0, error.indexOf('eval at')) + '...)');
+      log(`Weather.GetLastest() encountered an error -- ${error.substr(0, error.indexOf('eval at'))}...)`);
       return undefined;
     }
   };
@@ -460,8 +458,7 @@ var Weather = Weather || (function () {
       return getSpecificForecast(input);
     } catch (e) {
       let error = e.stack.split(/\n/).join('');
-      log('Weather -- getSpecificForecast encountered an error.')
-      log(error.substr(0, error.indexOf('eval at')) + '...)');
+      log(`Weather.Get() encountered an error -- ${error.substr(0, error.indexOf('eval at'))}...)`);
       return undefined;
     }
   };
@@ -471,8 +468,7 @@ var Weather = Weather || (function () {
       return getUpdatedForecast()
     } catch (e) {
       let error = e.stack.split(/\n/).join('');
-      log('Weather -- getUpdatedForecast encountered an error.')
-      log(error.substr(0, error.indexOf('eval at')) + '...)');
+      log(`Weather.GetUpdate() encountered an error -- ${error.substr(0, error.indexOf('eval at'))}...)`);
       return undefined;
     }
   };
@@ -522,13 +518,9 @@ var Weather = Weather || (function () {
       handleChatInput(msg);
     } catch (e) {
       let error = e.stack.split(/\n/).join('');
-      error = error.substr(0, error.indexOf('eval at')) + '...)';
+      error = `${error.substr(0, error.indexOf('eval at'))}...)`;
       const user = playerIsGM(msg.playerid) ? msg.who.replace(/( \(GM\)$)/g, '') : msg.who;
-      const messageStyle = 'background-color:#FFCCCC; padding:5px; border-size:1px; border-style:dotted;';
-      const fontStyle = 'color:#771000; font-size:70%;';
-      const header = '<h3>Something went wrong!</h3>';
-      const message = `/w ${user} <br>${header}<div style="${messageStyle}"><p style="${fontStyle}">${error}</p></div>`;
-      sendChat('Weather -- Error Handler', message);
+      sendChat('Weather -- Error Handler', `/w ${user} <br><h3>Something went wrong!</h3><div style="background-color:#FFCCCC; padding:5px; border-size:1px; border-style:dotted;"><p style="color:#771000; font-size:70%;">${error}</p></div>`);
     }
   };
 
@@ -600,7 +592,8 @@ var Weather = Weather || (function () {
           printTo(user, getHelp(playerIsGM(msg.playerid)));
           break;
         }
-        case 'history': {
+        case 'history':
+        case 'past': {
           if (!playerIsGM(msg.playerid) && s.gmOnly) return;
           if (args[2]) {
             const pastForecast = _.find(s.database.forecasts, forecast => forecast.time === parseFloat(args[2]));
@@ -636,7 +629,12 @@ var Weather = Weather || (function () {
           break;
         }
         case 'print': {
-          if (getLastForecast()) printTo('chat', getWeatherDescription(getLastForecast()));
+          if (!playerIsGM(msg.playerid)) return;
+          if (!s.install.needed) {
+            printTo('chat', getWeatherDescription(getLastForecast()));
+          } else {
+            printTo(user, 'Please complete the installation.');
+          }
           break;
         }
         case 'reinstall': {
@@ -646,7 +644,8 @@ var Weather = Weather || (function () {
           printTo(user, 'Are you sure you want to reset all information? <br>' + getButton('Yes', `!weather ${secureString} reinstall`) + getButton('No', '!weather decline'));
           break;
         }
-        case 'remove': {
+        case 'remove':
+        case 'destroy': {
           if (!playerIsGM(msg.playerid)) return;
           removeEffect(...args.slice(2));
           break;
@@ -656,19 +655,26 @@ var Weather = Weather || (function () {
           handlePause(false);
           break;
         }
-        case 'set': {
+        case 'set':
+        case 'change': {
           if (!playerIsGM(msg.playerid)) return;
           modifyLatestForecast(args.slice(2));
           break;
         }
         case 'update': {
           if (!playerIsGM(msg.playerid)) return;
-          printTo('chat', getWeatherDescription(getUpdatedForecast()));
+          if (!s.install.needed) {
+            printTo('chat', getWeatherDescription(getUpdatedForecast()));
+          } else {
+            printTo(user, 'Please complete the installation.');
+          }
           break;
         }
         default: {
           if (s.install.needed) {
-            printTo(user, `Weather hasn't been fully installed yet. ${playerIsGM(msg.playerid) ? 'Click this button to continue the process.<hr>' + getButton('Continue Installation', `!weather ${secureString}`) : 'Message your GM to let them know!'}`);
+            const secureString = getRandomString(32);
+            s.install.code = playerIsGM(msg.playerid) ? secureString : s.install.code;
+            printTo(user, `Weather hasn't been fully installed yet. ${playerIsGM(msg.playerid) ? '<hr>' + getButton('Continue Installation', `!weather ${secureString}`) : 'Message your GM to let them know!'}`);
           } else if (args.length === 1) {
             printTo(user, getWeatherDescription(getLastForecast()));
           } else {
