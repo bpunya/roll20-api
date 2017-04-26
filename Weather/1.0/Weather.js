@@ -231,14 +231,14 @@ var Weather = Weather || (function () {
   };
 
 // Creates a new WeatherEffect object and pushes it to the proper state database
-  const createNewEffect = function (type, name, temperature, windSpeed, humidity, precipitation) {
+  const createNewEffect = function (type, name, temperature, windSpeed, humidity) {
     if (!type) return printTo('gm', 'No input found.');
     if (_.find(state.Weather.database[type], obj => obj.name === name)) return printTo('gm', 'You must use a unique name.');
     let inputArray;
     switch (type) {
       case 'biome': {
         try {
-          inputArray = JSON.parse(`[${temperature}, ${windSpeed}, ${humidity}, ${precipitation}]`);
+          inputArray = JSON.parse(`[${temperature}, ${windSpeed}, ${humidity}]`);
         } catch (e) {
           printTo('gm', 'One of the values entered was invalid.');
           break;
@@ -256,7 +256,7 @@ var Weather = Weather || (function () {
       case 'cloud':
       case 'phenomena': {
         try {
-          inputArray = JSON.parse(`[${temperature}, ${windSpeed}, ${humidity}, ${precipitation}]`);
+          inputArray = JSON.parse(`[${temperature}, ${windSpeed}, ${humidity}]`);
         } catch (e) {
           printTo('gm', 'One of the values entered was not a number.');
           break;
@@ -312,7 +312,7 @@ var Weather = Weather || (function () {
                         .filter(stat => stat.name !== 'humidity' || parseFloat(stat.value) <= 100)
                         .value();
     if (!parsedArgs.length) return printTo('gm', 'No input found.');
-    if (!getLastForecast()) return printTo('gm', 'You haven\'t made any forecasts yet.')
+    if (!getLastForecast()) return printTo('gm', 'You haven\'t made any forecasts yet.');
     const message = parsedArgs.reduce((memo, stat) => { memo += ` ${stat.name} to ${stat.value}`; return memo; }, 'Changing the following values on the latest forecast:');
     const newStats = parsedArgs.reduce((memo, stat) => { memo[stat.name] = parseFloat(stat.value); return memo; }, {});
     printTo('gm', message);
@@ -437,7 +437,7 @@ var Weather = Weather || (function () {
     try {
       return advanceWeather(input);
     } catch (e) {
-      let error = e.stack.split(/\n/).join('');
+      const error = e.stack.split(/\n/).join('');
       log(`Weather.Advance() encountered an error -- ${error.substr(0, error.indexOf('eval at'))}...)`);
       return undefined;
     }
@@ -447,7 +447,7 @@ var Weather = Weather || (function () {
     try {
       return getLastForecast();
     } catch (e) {
-      let error = e.stack.split(/\n/).join('');
+      const error = e.stack.split(/\n/).join('');
       log(`Weather.GetLastest() encountered an error -- ${error.substr(0, error.indexOf('eval at'))}...)`);
       return undefined;
     }
@@ -457,7 +457,7 @@ var Weather = Weather || (function () {
     try {
       return getSpecificForecast(input);
     } catch (e) {
-      let error = e.stack.split(/\n/).join('');
+      const error = e.stack.split(/\n/).join('');
       log(`Weather.Get() encountered an error -- ${error.substr(0, error.indexOf('eval at'))}...)`);
       return undefined;
     }
@@ -465,9 +465,9 @@ var Weather = Weather || (function () {
 
   const apiGetUpdatedForecast = function () {
     try {
-      return getUpdatedForecast()
+      return getUpdatedForecast();
     } catch (e) {
-      let error = e.stack.split(/\n/).join('');
+      const error = e.stack.split(/\n/).join('');
       log(`Weather.GetUpdate() encountered an error -- ${error.substr(0, error.indexOf('eval at'))}...)`);
       return undefined;
     }
@@ -754,6 +754,10 @@ var Weather = Weather || (function () {
             printTo('gm', reply[stage]);
           }
           break;
+        }
+        default: {
+          log('Weather -- Something went horribly wrong. Resetting installation.');
+          state.Weather.install = new InstallObj();
         }
       }
     }
