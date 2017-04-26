@@ -206,11 +206,11 @@ var Weather = Weather || (function () {
   };
 
   const printTo = function (target, content) {
-    const FORMATTING_START = '<div style="box-shadow:-3px 3px 4px #999; background-color:#CCC; border-style:solid; border-width:1px; padding:10px; background-image:linear-gradient(135deg, #EEEE8E, #EEBE8E);">' +
-                             '<div style="border-width:5px; border-style:solid; border-color:#777; background-color:#FFF; padding:10px">';
+    const FORMATTING_START = '<div style="box-shadow:-3px 3px 4px #999; background-color:#CCC; border-style:solid; border-width:1px; padding:10px; background-image:linear-gradient(135deg, #FFFFCD, #CDFFFF);">' +
+                             '<div style="border-width:5px; border-style:solid; border-color:#777; background-color:#FFF; padding:10px;">';
     const FORMATTING_END = '</div></div>';
     if (target === 'chat') {
-      sendChat('', `/desc ${FORMATTING_START}<div style="text-align:center; font-size:110%;">${content}</div>${FORMATTING_END}`, null, { noarchive: true });
+      sendChat('', `/desc ${FORMATTING_START}${content}${FORMATTING_END}`, null, { noarchive: true });
     } else {
       sendChat('Weather', `/w ${target} <br>${FORMATTING_START}${content}${FORMATTING_END}`, null, { noarchive: true });
     }
@@ -311,6 +311,7 @@ var Weather = Weather || (function () {
                         .filter(stat => stat.name !== 'humidity' || parseFloat(stat.value) <= 100)
                         .value();
     if (!parsedArgs.length) return printTo('gm', 'No input found.');
+    if (!getLastForecast()) return printTo('gm', 'You haven\'t made any forecasts yet.')
     const message = parsedArgs.reduce((memo, stat) => { memo += ` ${stat.name} to ${stat.value}`; return memo; }, 'Changing the following values on the latest forecast:');
     const newStats = parsedArgs.reduce((memo, stat) => { memo[stat.name] = parseFloat(stat.value); return memo; }, {});
     printTo('gm', message);
@@ -325,7 +326,7 @@ var Weather = Weather || (function () {
       state.Weather.database[type] = _.reject(state.Weather.database[type], obj => obj.name === name);
       printTo('gm', `Deleting the ${type} named ${name}.`);
     } else {
-      printTo('gm', `I couldn't find the ${type} named ${name}.`);
+      printTo('gm', `There is no ${type} named ${name} to delete.`);
     }
   };
 
@@ -430,6 +431,51 @@ var Weather = Weather || (function () {
 /*************************************** Forecast Handlers ****************************************/
 /**************************************************************************************************/
 
+// API error handlers //
+  const apiAdvanceWeather = function (input) {
+    try {
+      return advanceWeather(input);
+    } catch (e) {
+      let error = e.stack.split(/\n/).join('');
+      log('Weather -- advanceWeather encountered an error.')
+      log(error.substr(0, error.indexOf('eval at')) + '...)');
+      return undefined;
+    }
+  };
+
+  const apiGetLastForecast = function () {
+    try {
+      return getLastForecast();
+    } catch (e) {
+      let error = e.stack.split(/\n/).join('');
+      log('Weather -- getLastForecast encountered an error.')
+      log(error.substr(0, error.indexOf('eval at')) + '...)');
+      return undefined;
+    }
+  };
+
+  const apiGetSpecificForecast = function (input) {
+    try {
+      return getSpecificForecast(input);
+    } catch (e) {
+      let error = e.stack.split(/\n/).join('');
+      log('Weather -- getSpecificForecast encountered an error.')
+      log(error.substr(0, error.indexOf('eval at')) + '...)');
+      return undefined;
+    }
+  };
+
+  const apiGetUpdatedForecast = function () {
+    try {
+      return getUpdatedForecast()
+    } catch (e) {
+      let error = e.stack.split(/\n/).join('');
+      log('Weather -- getUpdatedForecast encountered an error.')
+      log(error.substr(0, error.indexOf('eval at')) + '...)');
+      return undefined;
+    }
+  };
+
 // Advances time if Weather isn't paused, and returns the relevant weather object.
   const advanceWeather = function (args) {
     const s = state.Weather;
@@ -468,9 +514,25 @@ var Weather = Weather || (function () {
 /***************************************** Input Handlers *****************************************/
 /**************************************************************************************************/
 
+// Error Handler //
+  const prepareChatInput = function (msg) {
+    if (msg.type !== 'api') return;
+    try {
+      handleChatInput(msg);
+    } catch (e) {
+      let error = e.stack.split(/\n/).join('');
+      error = error.substr(0, error.indexOf('eval at')) + '...)';
+      const user = playerIsGM(msg.playerid) ? msg.who.replace(/( \(GM\)$)/g, '') : msg.who;
+      const messageStyle = 'background-color:#FFCCCC; padding:5px; border-size:1px; border-style:dotted;';
+      const fontStyle = 'color:#771000; font-size:70%;';
+      const header = '<h3>Something went wrong!</h3>';
+      const message = `/w ${user} <br>${header}<div style="${messageStyle}"><p style="${fontStyle}">${error}</p></div>`;
+      sendChat('Weather -- Error Handler', message);
+    }
+  };
+
 // Chat Handler //
   const handleChatInput = function (msg) {
-    if (msg.type !== 'api') return;
     const args = msg.content.split(/\s/);
     if (args[0].toLowerCase() === '!weather') {
       const s = state.Weather;
@@ -562,8 +624,8 @@ var Weather = Weather || (function () {
               printTo(user, `The ${args[2]} biome doesn't exist.`);
             }
           } else {
-            const message = _.reduce(s.database.biome, (memo, biome) => { memo += getButton(biome.name, `!weather move ${biome.name}`); return memo; }, 'Please select the biome that your players are moving to.<hr>');
-            printTo(user, message);
+            const message = _.reduce(s.database.biome, (memo, biome) => { memo += getButton(biome.name, `!weather move ${biome.name}`); return memo; }, '') || '<p style="font-size:60%">~ tumbleweed noises ~</p>';
+            printTo(user, 'Please select the biome that your players are moving to.<hr>' + message);
           }
           break;
         }
@@ -770,17 +832,17 @@ var Weather = Weather || (function () {
 
 // Register event handlers
   const registerEventHandlers = function () {
-    on('chat:message', handleChatInput);
+    on('chat:message', prepareChatInput);
   };
 
 // Exposed functions
   return {
     CheckInstall: checkInstall,
     RegisterEventHandlers: registerEventHandlers,
-    Advance: advanceWeather,
-    GetLatest: getLastForecast,
-    GetUpdate: getUpdatedForecast,
-    Get: getSpecificForecast,
+    Advance: apiAdvanceWeather,
+    GetLatest: apiGetLastForecast,
+    GetUpdate: apiGetUpdatedForecast,
+    Get: apiGetSpecificForecast,
   };
 }());
 
