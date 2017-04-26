@@ -34,7 +34,7 @@
             "name": "Season Effect Percentage",
             "type": "number",
             "default": "100",
-            "description": "This number represents the percentage of potential change used. For example, a value of 1000 would increase the daily temperature (and other) trends by 10 times the original. Increase this value for larger fluxuations, decrease it for more stability. Defaults to 100 (100% of original values). Minimum of 0 (no fluctuations)."
+            "description": "This number represents the percentage of potential change used. For example, a value of 1000 would increase the daily temperature (and other) trends by 10 times the original. Increase this value for larger fluxuations, decrease it for more stability. Defaults to 100 (100% of original values). Minimum of 1 (very little fluctuations)."
         },
         {
             "name": "Maximum Forecasts Kept in History",
