@@ -503,7 +503,7 @@ var Weather = Weather || (function () {
   const getUpdatedForecast = function () {
     const s = state.Weather;
     const daysSinceLast = getDaysElapsed(getLastForecast().time, Date.now());
-    if (!s.pause.active && s.autoAdvance && daysSinceLast > 0) return createNewForecast(daysSinceLast);
+    if (!s.pause.active && s.autoAdvance && daysSinceLast > 0) return createNewForecast();
     return getLastForecast();
   };
 
@@ -628,15 +628,6 @@ var Weather = Weather || (function () {
           handlePause(true);
           break;
         }
-        case 'print': {
-          if (!playerIsGM(msg.playerid)) return;
-          if (!s.install.needed) {
-            printTo('chat', getWeatherDescription(getLastForecast()));
-          } else {
-            printTo(user, 'Please complete the installation.');
-          }
-          break;
-        }
         case 'reinstall': {
           if (!playerIsGM(msg.playerid)) return;
           const secureString = getRandomString(32);
@@ -661,7 +652,8 @@ var Weather = Weather || (function () {
           modifyLatestForecast(args.slice(2));
           break;
         }
-        case 'update': {
+        case 'update':
+        case 'print': {
           if (!playerIsGM(msg.playerid)) return;
           if (!s.install.needed) {
             printTo('chat', getWeatherDescription(getUpdatedForecast()));
@@ -676,7 +668,7 @@ var Weather = Weather || (function () {
             s.install.code = playerIsGM(msg.playerid) ? secureString : s.install.code;
             printTo(user, `Weather hasn't been fully installed yet. ${playerIsGM(msg.playerid) ? '<hr>' + getButton('Continue Installation', `!weather ${secureString}`) : 'Message your GM to let them know!'}`);
           } else if (args.length === 1) {
-            printTo(user, getWeatherDescription(getLastForecast()));
+            printTo(user, getWeatherDescription(getUpdatedForecast()));
           } else {
             printTo(user, getHelp(playerIsGM(msg.playerid)));
           }
