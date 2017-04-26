@@ -58,7 +58,7 @@ var Weather = Weather || (function () {
         humidity: a.humidity || 0,
         precipitation: a.precipitation || 0,
       };
-      this.description = () => getWeatherDescription(this).replace(/<(?:.|\n)*?>/gm, '');;
+      this.description = () => getWeatherDescription(this).replace(/<(?:.|\n)*?>/gm, '');
     }
   }
 
