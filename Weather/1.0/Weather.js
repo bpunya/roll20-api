@@ -233,6 +233,7 @@ var Weather = Weather || (function () {
 // Creates a new WeatherEffect object and pushes it to the proper state database
   const createNewEffect = function (type, name, temperature, windSpeed, humidity, precipitation) {
     if (!type) return printTo('gm', 'No input found.');
+    if (_.find(state.Weather.database[type], obj => obj.name === name)) return printTo('gm', 'You must use a unique name.');
     let inputArray;
     switch (type) {
       case 'biome': {
