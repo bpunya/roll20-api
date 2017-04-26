@@ -667,14 +667,10 @@ var Weather = Weather || (function () {
           break;
         }
         default: {
-          if (args.length === 1) {
-            if (s.install.needed) {
-              const secureString = getRandomString(32);
-              s.install.code = secureString;
-              printTo(user, `Weather hasn't been fully installed yet. ${playerIsGM(msg.playerid) ? 'Click this button to continue the process.<hr>' + getButton('Continue Installation', `!weather ${secureString}`) : 'Message your GM to let them know!'}`);
-            } else {
-              printTo(user, getWeatherDescription(getLastForecast()));
-            }
+          if (s.install.needed) {
+            printTo(user, `Weather hasn't been fully installed yet. ${playerIsGM(msg.playerid) ? 'Click this button to continue the process.<hr>' + getButton('Continue Installation', `!weather ${secureString}`) : 'Message your GM to let them know!'}`);
+          } else if (args.length === 1) {
+            printTo(user, getWeatherDescription(getLastForecast()));
           } else {
             printTo(user, getHelp(playerIsGM(msg.playerid)));
           }
