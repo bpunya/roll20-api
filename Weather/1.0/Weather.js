@@ -403,28 +403,22 @@ var Weather = Weather || (function () {
     return getColourHex(percent);
   };
 
-// Returns a new value depending on the amount of iterations, trend and original
-  const getValueChange = function (original, trend, iteration) {
-    const current = original;
-    const deviation = trend * state.Weather.trendScale;
-    let count = iteration || 1;
-    const iterator = (mean) => {
-      if (count > 0) {
-        count -= 1;
-        const newValue = normalInverse(Math.random(), mean, deviation);
-        return iterator(newValue);
-      }
-      return mean;
-    };
-    return iterator(current);
+// Returns a new value depending on the original value, deviation and iterations to run
+  const getValueChange = function (mu, sigma, iteration) {
+    if (iteration > 0) {
+      const newValue = normalInverse(Math.random(), mu, sigma * state.Weather.trendScale);
+      return getValueChange(newValue, sigma, iteration - 1)
+    }
+    return mu;
   };
 
   const verifyForecastStats = function (stats) {
+    const humidityScale = stats.humidity <= 0 ? 0 : stats.humidity > 50 ? 100 : stats.humidity * 2;
     return {
       temperature: Math.round(stats.temperature),
       windSpeed: Math.max(Math.round(stats.windSpeed), 0),
       humidity: Math.max(Math.min(Math.round(stats.humidity), 100), 0),
-      precipitation: Math.max(Math.round(stats.precipitation * stats.humidity / 100), 0),
+      precipitation: Math.max(Math.round(stats.precipitation * humidityScale / 100), 0),
     };
   };
 
