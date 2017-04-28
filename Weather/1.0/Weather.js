@@ -313,8 +313,8 @@ var Weather = Weather || (function () {
                         .value();
     if (!parsedArgs.length) return printTo('gm', 'No input found.');
     if (!getLastForecast()) return printTo('gm', 'You haven\'t made any forecasts yet.');
-    const message = parsedArgs.reduce((memo, stat) => { memo += ` ${stat.name} to ${stat.value}`; return memo; }, 'Changing the following values on the latest forecast:');
-    const newStats = parsedArgs.reduce((memo, stat) => { memo[stat.name] = parseFloat(stat.value); return memo; }, {});
+    const message = parsedArgs.reduce((m, stat) => { m += ` ${stat.name} to ${stat.value}`; return m; }, 'Changing the following values on the latest forecast:');
+    const newStats = parsedArgs.reduce((m, stat) => { m[stat.name] = parseFloat(stat.value); return m; }, {});
     printTo('gm', message);
     s.database.forecasts[s.database.forecasts.length - 1].stats = Object.assign(getLastForecast().stats, newStats);
   };
@@ -341,7 +341,7 @@ var Weather = Weather || (function () {
     const closestEffect = _.chain(state.Weather.database[type])
                            .map(effect => ({
                              name: effect.name,
-                             distance: ['temperature', 'windSpeed', 'humidity'].reduce((memo, name) => { memo += Math.abs(effect.stats[name] - toCompare[name]); return memo; }, 0),
+                             distance: ['temperature', 'windSpeed', 'humidity'].reduce((m, name) => { m += Math.abs(effect.stats[name] - toCompare[name]); return m; }, 0),
                            }))
                            .sortBy(effect => effect.distance)
                            .first()
@@ -511,10 +511,9 @@ var Weather = Weather || (function () {
     try {
       handleChatInput(msg);
     } catch (e) {
-      let error = e.stack.split(/\n/).join('');
-      error = `${error.substr(0, error.indexOf('eval at'))}...)`;
+      const error = e.stack.split(/\n/).join('<br>');
       const user = playerIsGM(msg.playerid) ? msg.who.replace(/( \(GM\)$)/g, '') : msg.who;
-      sendChat('Weather -- Error Handler', `/w ${user} <br><h3>Something went wrong!</h3><div style="background-color:#FFCCCC; padding:5px; border-size:1px; border-style:dotted;"><p style="color:#771000; font-size:70%;">${error}</p></div>`);
+      sendChat('Weather -- Error Handler', `/w ${user} <br><h3>Something went wrong!</h3><div style="background-color:#FFCCCC; padding:5px; border-size:1px; border-style:dotted;"><p style="color:#771000; font-size:70%;">${error.substr(0, error.indexOf('eval at'))}...)</p></div>`, null, { noarchive: true });
     }
   };
 
@@ -597,7 +596,7 @@ var Weather = Weather || (function () {
               printTo(user, 'The forecast selected does not exist.');
             }
           } else {
-            const message = _.reduce(s.database.forecasts, (memo, forecast) => { memo += getButton(`Day ${forecast.day}`, `!weather history ${forecast.time}`); return memo; }, '') || '<p style="font-size:60%">~ tumbleweed noises ~</p>';
+            const message = _.reduce(s.database.forecasts, (m, forecast) => { m += getButton(`Day ${forecast.day}`, `!weather history ${forecast.time}`); return m; }, '') || '<p style="font-size:60%">~ tumbleweed noises ~</p>';
             printTo(user, '<h1 style="color:#56ABE8">Past Forecasts</h1> Please select a previous forecast to see what happened on that day.<hr>' + message);
           }
           break;
@@ -612,7 +611,7 @@ var Weather = Weather || (function () {
               printTo(user, `The ${args[2]} biome doesn't exist.`);
             }
           } else {
-            const message = _.reduce(s.database.biome, (memo, biome) => { memo += getButton(biome.name, `!weather move ${biome.name}`); return memo; }, '') || '<p style="font-size:60%">~ tumbleweed noises ~</p>';
+            const message = _.reduce(s.database.biome, (m, biome) => { m += getButton(biome.name, `!weather move ${biome.name}`); return m; }, '') || '<p style="font-size:60%">~ tumbleweed noises ~</p>';
             printTo(user, 'Please select the biome that your players are moving to.<hr>' + message);
           }
           break;
@@ -676,7 +675,7 @@ var Weather = Weather || (function () {
     if (input === 'reinstall') resetState();
     const s = state.Weather;
     const secureString = getRandomString(32);
-    const getQuestionOptions = (list, statement) => _.reduce(s.database[list], (memo, item) => { memo += getButton(`${item.name}`, `!weather ${secureString} ${item.name}`); return memo; }, `${statement}<hr>`);
+    const getQuestionOptions = (list, statement) => _.reduce(s.database[list], (m, item) => { m += getButton(`${item.name}`, `!weather ${secureString} ${item.name}`); return m; }, `${statement}<hr>`);
     let stage = s.install.stageList[s.install.stageIndex];
     const reply = {
       biome: getQuestionOptions('biome', 'Please select the biome that most closely resembles where your players are. This can be changed later.'),
