@@ -276,7 +276,7 @@ var Weather = Weather || (function () {
         break;
       }
       default: {
-        printTo('gm', 'You need to specify the type of effect you want to add. Your options are "biome, "weather", "cloud", and "phenomena ".');
+        printTo('gm', 'You need to specify the type of effect you want to add. Your options are "biome, "weather", "cloud", and "phenomena".');
       }
     }
   };
