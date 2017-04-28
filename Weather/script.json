@@ -28,7 +28,7 @@
             "name": "In-Game Days per Season",
             "type": "number",
             "default": "92",
-            "description": "This number determines how long each season will last in-game. Defaults to 92 (roughly 3 months a season). Minimum of 0 (no seasons)."
+            "description": "This number determines how long each season will last in-game. Defaults to 91 (roughly 3 months a season). Minimum of 0 (no seasons)."
         },
         {
             "name": "Season Effect Percentage",
