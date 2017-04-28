@@ -341,12 +341,12 @@ var Weather = Weather || (function () {
 /**************************************************************************************************/
 
 // Returns the closest object to the given array
-  const getClosestEffect = function (type, toCompare, range) {
+  const getClosestEffect = function (type, obj, range) {
     if (!state.Weather.database[type]) return undefined;
     const closestEffect = _.chain(state.Weather.database[type])
                            .map(effect => ({
                              name: effect.name,
-                             distance: ['temperature', 'windSpeed', 'humidity'].reduce((m, name) => { m += Math.abs(effect.stats[name] - toCompare[name]); return m; }, 0),
+                             distance: ['temperature', 'windSpeed', 'humidity'].reduce((m, p) => { m += Math.abs(effect.stats[p] - obj[p]); return m; }, 0),
                            }))
                            .sortBy(effect => effect.distance)
                            .first()
