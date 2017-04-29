@@ -127,7 +127,7 @@ var Weather = Weather || (function () {
 /********************************** SETUP AND CHECKING FUNCTION  **********************************/
 /**************************************************************************************************/
 
-  const checkInstall = function () {
+  const startup = function () {
     log(`-- Weather v${version} -- [${new Date(lastUpdate * 1000)}]`);
     if (!state.Weather) {
       printTo('gm', '<h1 style="color:#56ABE8">Weather</h1><hr>Thank you for installing Weather! Please follow the instructions in the following chat messages to set up the script to your environment.');
@@ -853,7 +853,8 @@ var Weather = Weather || (function () {
 
 // Exposed functions
   return {
-    CheckInstall: checkInstall,
+    CheckInstall: true;
+    Startup: startup,
     RegisterEventHandlers: registerEventHandlers,
     Advance: apiAdvanceWeather,
     GetLatest: apiGetLastForecast,
@@ -865,6 +866,6 @@ var Weather = Weather || (function () {
 on('ready', () => {
   "use strict";
 
-  Weather.CheckInstall();
+  Weather.Startup();
   Weather.RegisterEventHandlers();
 });
