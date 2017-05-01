@@ -478,10 +478,9 @@ var Weather = Weather || (function () {
 
 // Advances time if Weather isn't paused, and returns the relevant weather object.
   const advanceWeather = function (input) {
-    const s = state.Weather;
     const days = Math.floor(parseFloat(input)) || 0;
     const daysSinceLast = getDaysElapsed(getLastForecast().time, Date.now());
-    if (!s.pause.active && (days > 0 || daysSinceLast > 0)) {
+    if (!state.Weather.pause.active && (days > 0 || daysSinceLast > 0)) {
       if (days > daysSinceLast) {
         return createNewForecast(days);
       }
@@ -504,9 +503,8 @@ var Weather = Weather || (function () {
 
 // Checks to see if we need to update. If yes, return a new forecast. Otherwise return the latest.
   const getUpdatedForecast = function () {
-    const s = state.Weather;
     const daysSinceLast = getDaysElapsed(getLastForecast().time, Date.now());
-    if (!s.pause.active && s.autoAdvance && daysSinceLast > 0) return createNewForecast();
+    if (!state.Weather.pause.active && state.Weather.autoAdvance && daysSinceLast > 0) return createNewForecast();
     return getLastForecast();
   };
 
@@ -515,7 +513,7 @@ var Weather = Weather || (function () {
 /**************************************************************************************************/
 
 // Error Handler //
-  const prepareChatInput = function (msg) {
+  const handleChatError = function (msg) {
     if (msg.type !== 'api') return;
     try {
       handleChatInput(msg);
@@ -848,12 +846,12 @@ var Weather = Weather || (function () {
 
 // Register event handlers
   const registerEventHandlers = function () {
-    on('chat:message', prepareChatInput);
+    on('chat:message', handleChatError);
   };
 
 // Exposed functions
   return {
-    CheckInstall: true;
+    CheckInstall: (state.Weather && !state.Weather.install.needed),
     Startup: startup,
     RegisterEventHandlers: registerEventHandlers,
     Advance: apiAdvanceWeather,
