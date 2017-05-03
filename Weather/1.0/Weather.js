@@ -206,10 +206,9 @@ var Weather = Weather || (function () {
     return `<h1 style="color:${headerColour}">${header}. </h1><hr><p style="color:${textColour}">${text}</p>`;
   };
 
-  const printTo = function (target, content) {
-    const FORMATTING_START = '<div style="box-shadow:-3px 3px 4px #999; background-color:#CCC; border-style:solid; border-width:1px; padding:10px; background-image:linear-gradient(135deg, #FFFFCD, #CDFFFF);">' +
-                             '<div style="border-width:5px; border-style:solid; border-color:#777; background-color:#FFF; padding:10px;">';
-    const FORMATTING_END = '</div></div>';
+  const printTo = function (target, content, plain) {
+    const FORMATTING_START = !plain ? '<div style="box-shadow:-3px 3px 4px #999; background-color:#CCC; border-style:solid; border-width:1px; padding:10px;        background-image:linear-gradient(135deg, #FFFFCD, #CDFFFF);"><div style="border-width:5px; border-style:solid; border-color:#777; background-color:#FFF; padding:10px;">' : '';
+    const FORMATTING_END = !plain ? '</div></div>' : '';
     if (target === 'chat') {
       sendChat('', `/desc ${FORMATTING_START}${content}${FORMATTING_END}`);
     } else {
@@ -320,7 +319,7 @@ var Weather = Weather || (function () {
     const parsedArgs = _.chain(args)
                         .map((item) => { const stat = item.split(':'); return { name: stat[0], value: stat[1] }; })
                         .reject(stat => parseFloat(stat.value).toString() !== stat.value)
-                        .filter(stat => _.contains(_.values(getLastForecast().stats), stat.name))
+                        .filter(stat => _.contains(_.keys(getLastForecast().stats), stat.name))
                         .filter(stat => stat.name === 'temperature' || parseFloat(stat.value) >= 0)
                         .filter(stat => stat.name !== 'humidity' || parseFloat(stat.value) <= 100)
                         .value();
@@ -354,7 +353,7 @@ var Weather = Weather || (function () {
     const closestEffect = _.chain(state.Weather.database[type])
                            .map(effect => ({
                              name: effect.name,
-                             distance: _.values(effect.stats).reduce((m, p) => { m += effect.stats[p] ? Math.abs(effect.stats[p] - obj[p]) : 0; return m; }, 0),
+                             distance: _.keys(effect.stats).reduce((m, p) => { m += effect.stats[p] ? Math.abs(effect.stats[p] - obj[p]) : 0; return m; }, 0),
                            }))
                            .sortBy(effect => effect.distance)
                            .first()
