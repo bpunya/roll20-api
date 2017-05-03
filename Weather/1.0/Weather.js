@@ -153,7 +153,7 @@ var Weather = Weather || (function () {
       s.timeScale = Math.max(parseFloat(g['Rate of Passing Time']), 1);
       s.seasonDuration = Math.max(parseFloat(g['In-Game Days per Season']), 0);
       s.trendScale = Math.max((parseInt(g['Season Effect Percentage'], 10) / 100), 0.01);
-      s.maxHistory = Math.max(Math.min(parseInt(g['Maximum Forecasts Kept in History'], 10), 700), 5);
+      s.maxHistory = Math.max(Math.min(parseInt(g['Maximum Forecasts Kept in History'], 10), 700), 10);
       s.autoAdvance = g['Automatic Time Advancement'] === 'true';
       s.gmOnly = g['GM Only'] === 'true';
     }
@@ -484,8 +484,8 @@ var Weather = Weather || (function () {
   const advanceWeather = function (input) {
     const desiredDays = Math.floor(parseInt(input, 10)) || 0;
     const daysSinceLast = getDaysElapsed(getLastForecast().time, Date.now());
-    if (!state.Weather.pause.active && (days > 0 || daysSinceLast > 0)) {
-      if (days > daysSinceLast) {
+    if (!state.Weather.pause.active && (desiredDays > 0 || daysSinceLast > 0)) {
+      if (desiredDays > daysSinceLast) {
         return handleForecastCreation(desiredDays);
       }
       return handleForecastCreation(daysSinceLast);
@@ -602,14 +602,14 @@ var Weather = Weather || (function () {
           if (!playerIsGM(msg.playerid) && s.gmOnly) return;
           if (s.install.needed) printTo(user, 'Please complete the installation.');
           else if (args[2]) {
-            const pastForecast = _.find(s.database.forecasts, forecast => forecast.time === parseFloat(args[2]));
+            const pastForecast = _.find(s.database.forecasts, forecast => forecast.day === parseFloat(args[2]));
             if (pastForecast) {
               printTo(user, getWeatherDescription(pastForecast));
             } else {
               printTo(user, 'The forecast selected does not exist.');
             }
           } else {
-            const message = _.reduce(s.database.forecasts, (m, forecast) => { m += getButton(`Day ${forecast.day}`, `!weather history ${forecast.time}`); return m; }, '<h1 style="color:#56ABE8">Past Forecasts</h1> Please select a previous forecast to see what happened on that day.<hr>');
+            const message = _.reduce(s.database.forecasts, (m, forecast) => { m += getButton(`Day ${forecast.day}`, `!weather history ${forecast.day}`); return m; }, '<h1 style="color:#56ABE8">Past Forecasts</h1> Please select a previous forecast to see what happened on that day.<hr>');
             printTo(user, message);
           }
           break;
