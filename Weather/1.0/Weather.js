@@ -5,7 +5,7 @@ var Weather = Weather || (function () {
   const version = 1.0;
   const lastUpdate = 1492489588;
   const EFFECT_SEARCH_RANGE = 100;
-  const TIME_PER_DAY = 86400 / (state.Weather && state.Weather.timeScale ? state.Weather.timeScale : 1) * 1000;
+  const TIME_PER_DAY = 86400 / (state.Weather ? state.Weather.timeScale : 1) * 1000;
 
   class Biome {
     constructor(a, b, c, d, e) {
@@ -98,7 +98,7 @@ var Weather = Weather || (function () {
       this.seasonDuration = 91;
       this.trendScale = 1;
       this.timeScale = 1;
-      this.maxHistory = 50;
+      this.maxHistory = 150;
       this.lastupdated = 0;
       this.pause = new PauseObj();
       this.install = new InstallObj();
@@ -248,7 +248,7 @@ var Weather = Weather || (function () {
           printTo('gm', 'One of the values entered was invalid.');
           break;
         }
-        if (inputArray.every(stat => stat.every(value => parseFloat(value) === value))) {
+        if (inputArray.every(stat => stat.length >= 3 && stat.every(value => parseFloat(value) === value))) {
           const newEffect = new WeatherEffect(name, ...inputArray);
           state.Weather.database[type].push(newEffect);
           printTo('gm', `Adding a new ${type} called ${name}.`);
@@ -283,11 +283,10 @@ var Weather = Weather || (function () {
 
 // Creates a new weather object and pushes it to the state database.
 // Also returns the object created.
-  const createNewForecast = function (days) {
+  const createNewForecast = function () {
     const s = state.Weather;
     const prev = getLastForecast();
-    const daysSinceLast = parseInt(days, 10) || getDaysElapsed(prev.time, Date.now());
-    const overallDay = prev.day + daysSinceLast;
+    const overallDay = prev.day + 1;
     const trend = {
       temperature: getSeasonTrend('temperature', overallDay),
       windSpeed: getSeasonTrend('windSpeed', overallDay),
@@ -295,10 +294,10 @@ var Weather = Weather || (function () {
       precipitation: getSeasonTrend('precipitation', overallDay),
     };
     const newStats = {
-      temperature: getValueChange((prev.stats.temperature + trend.temperature) / 2, s.biome.temperature.variance, daysSinceLast),
-      windSpeed: getValueChange((prev.stats.windSpeed + trend.windSpeed) / 2, s.biome.windSpeed.variance, daysSinceLast),
-      humidity: getValueChange((prev.stats.humidity + trend.humidity) / 2, s.biome.humidity.variance, daysSinceLast),
-      precipitation: getValueChange((prev.stats.precipitation + trend.precipitation) / 2, s.biome.precipitation.variance, daysSinceLast),
+      temperature: getValueChange((prev.stats.temperature + trend.temperature) / 2, s.biome.temperature.variance),
+      windSpeed: getValueChange((prev.stats.windSpeed + trend.windSpeed) / 2, s.biome.windSpeed.variance),
+      humidity: getValueChange((prev.stats.humidity + trend.humidity) / 2, s.biome.humidity.variance),
+      precipitation: getValueChange((prev.stats.precipitation + trend.precipitation) / 2, s.biome.precipitation.variance),
     };
     const currentWeather = new Forecast(normalizeForecastStats(newStats), overallDay);
     log(`Weather -- Creating a forecast for day ${overallDay}`);
@@ -306,13 +305,22 @@ var Weather = Weather || (function () {
     return currentWeather;
   };
 
+// Handles forecast Creation
+  const handleForecastCreation = function (iteration) {
+    if (iteration > 1) {
+      createNewForecast();
+      return handleForecastCreation(iteration - 1);
+    }
+    return createNewForecast();
+  };
+
 // Changes the stats for the latest weather forecast (if valid)
   const modifyLatestForecast = function (args) {
     const s = state.Weather;
     const parsedArgs = _.chain(args)
                         .map((item) => { const stat = item.split(':'); return { name: stat[0], value: stat[1] }; })
-                        .filter(stat => _.contains(['temperature', 'windSpeed', 'humidity', 'precipitation'], stat.name))
                         .reject(stat => parseFloat(stat.value).toString() !== stat.value)
+                        .filter(stat => _.contains(_.values(getLastForecast().stats), stat.name))
                         .filter(stat => stat.name === 'temperature' || parseFloat(stat.value) >= 0)
                         .filter(stat => stat.name !== 'humidity' || parseFloat(stat.value) <= 100)
                         .value();
@@ -346,7 +354,7 @@ var Weather = Weather || (function () {
     const closestEffect = _.chain(state.Weather.database[type])
                            .map(effect => ({
                              name: effect.name,
-                             distance: ['temperature', 'windSpeed', 'humidity'].reduce((m, p) => { m += Math.abs(effect.stats[p] - obj[p]); return m; }, 0),
+                             distance: _.values(effect.stats).reduce((m, p) => { m += effect.stats[p] ? Math.abs(effect.stats[p] - obj[p]) : 0; return m; }, 0),
                            }))
                            .sortBy(effect => effect.distance)
                            .first()
@@ -409,12 +417,8 @@ var Weather = Weather || (function () {
   };
 
 // Returns a new value depending on the original value, deviation and iterations to run
-  const getValueChange = function (mu, sigma, iteration) {
-    if (iteration > 0) {
-      const newValue = normalInverse(Math.random(), mu, sigma * state.Weather.trendScale);
-      return getValueChange(newValue, sigma, iteration - 1);
-    }
-    return mu;
+  const getValueChange = function (mu, sigma) {
+    return normalInverse(Math.random(), mu, sigma * state.Weather.trendScale);
   };
 
   const normalizeForecastStats = function (stats) {
@@ -478,13 +482,13 @@ var Weather = Weather || (function () {
 
 // Advances time if Weather isn't paused, and returns the relevant weather object.
   const advanceWeather = function (input) {
-    const days = Math.floor(parseFloat(input)) || 0;
+    const desiredDays = Math.floor(parseInt(input, 10)) || 0;
     const daysSinceLast = getDaysElapsed(getLastForecast().time, Date.now());
     if (!state.Weather.pause.active && (days > 0 || daysSinceLast > 0)) {
       if (days > daysSinceLast) {
-        return createNewForecast(days);
+        return handleForecastCreation(desiredDays);
       }
-      return createNewForecast();
+      return handleForecastCreation(daysSinceLast);
     }
     return getLastForecast();
   };
@@ -504,7 +508,7 @@ var Weather = Weather || (function () {
 // Checks to see if we need to update. If yes, return a new forecast. Otherwise return the latest.
   const getUpdatedForecast = function () {
     const daysSinceLast = getDaysElapsed(getLastForecast().time, Date.now());
-    if (!state.Weather.pause.active && state.Weather.autoAdvance && daysSinceLast > 0) return createNewForecast();
+    if (!state.Weather.pause.active && state.Weather.autoAdvance && daysSinceLast > 0) return handleForecastCreation(daysSinceLast);
     return getLastForecast();
   };
 
