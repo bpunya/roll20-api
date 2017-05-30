@@ -1,39 +1,27 @@
 // Github: https://github.com/bpunya/roll20-api/blob/master/Weather/1.0/Weather.js
 // Author: PaprikaCC (Bodin Punyaprateep)
+/* Designed for use in the Roll20 API.
+ * This script creates weather forecasts and outputs formatted messages to the Roll20 chat.
+ */
+
 
 var Weather = Weather || (function () {
   const version = 1.0;
   const lastUpdate = 1492489588;
-  const EFFECT_SEARCH_RANGE = 100;
-  const TIME_PER_DAY = 86400 / (state.Weather ? state.Weather.timeScale : 1) * 1000;
 
   class Biome {
     constructor(a, b, c, d, e) {
       this.name = a;
-      this.temperature = {
-        max: b[0],
-        min: b[1],
-        variance: b[2],
-        shift: b[3] || 0,
-      };
-      this.windSpeed = {
-        max: c[0],
-        min: c[1],
-        variance: c[2],
-        shift: c[3] || 0,
-      };
-      this.humidity = {
-        max: d[0],
-        min: d[1],
-        variance: d[2],
-        shift: d[3] || 0,
-      };
-      this.precipitation = {
-        max: e[0],
-        min: e[1],
-        variance: e[2],
-        shift: e[3] || 0,
-      };
+      this.temperature = this.setup(b);
+      this.windSpeed = this.setup(c);
+      this.humidity = this.setup(d);
+      this.precipitation = this.setup(e);
+      this.setup = input => ({
+        max: input[0],
+        min: input[1],
+        variance: input[2],
+        shift: input[3] || 0,
+      });
     }
   }
 
@@ -169,7 +157,9 @@ var Weather = Weather || (function () {
   const getHelp = function (isGm) {
     return '<div>' +
             '<strong><h1 style="text-align:left;color:#56ABE8">Weather</h1></strong>' +
-            '<p style="text-align:left;font-size:75%;">The following is a list of all current settings.</p>' +
+            '<p style="text-align:left;font-size:75%;">' +
+              'The following is a list of all current settings.' +
+            '</p>' +
           '</div>' +
           '<div style="color:#000000;background-color:#FFF">' +
             '<hr style="background:#000000; border:0; height:7px" />' +
@@ -179,10 +169,13 @@ var Weather = Weather || (function () {
               `${state.Weather.gmOnly ? 'Players can only view the weather' : 'Players can access some extra Weather functions'}</ul>` +
           '</div>' +
           '<div style="">' +
-            '<p style="font-size:90%;">To use <span style="color:#56ABE8">Weather</span> as a macro or chat command, follow this format:<br>' +
-            '<span style="color:#56ABE8">!weather</span><br>' +
-            'or<br>' +
-            '<span style="color:#56ABE8">!weather [option [optionValue]]</span></p>' +
+            '<p style="font-size:90%;">' +
+              'To use <span style="color:#56ABE8">Weather</span> as a macro or chat command, follow this format:' +
+              '<br>' +
+              '<span style="color:#56ABE8">!weather</span><br>' +
+              'or<br>' +
+              '<span style="color:#56ABE8">!weather [option [optionValue]]</span>' +
+            '</p>' +
           '</div>';
   };
 
@@ -191,7 +184,7 @@ var Weather = Weather || (function () {
     const f = forecast.stats;
     const weatherCondition = getClosestEffect('weather', f);
     const cloudCondition = getClosestEffect('cloud', f);
-    const phenomena = getClosestEffect('phenomena', f, EFFECT_SEARCH_RANGE);
+    const phenomena = getClosestEffect('phenomena', f, 100);
     const humidity = f.humidity < 5 ? 'dry' : f.humidity < 15 ? 'calm' : f.humidity < 30 ? 'moist' : 'wet';
     const temperature = f.temperature < 5 ? 'chilly' : f.temperature < 15 ? 'mild' : f.temperature < 30 ? 'hot' : 'blisteringly hot';
     const windSpeed = f.windSpeed < 5 ? 'very light' : f.windSpeed < 15 ? 'light' : f.windSpeed < 30 ? 'moderate' : 'heavi';
@@ -204,7 +197,7 @@ var Weather = Weather || (function () {
   };
 
   const printTo = function (target, content, plain) {
-    const FORMATTING_START = !plain ? '<div style="box-shadow:-3px 3px 4px #999; background-color:#CCC; border-style:solid; border-width:1px; padding:10px;        background-image:linear-gradient(135deg, #FFFFCD, #CDFFFF);"><div style="border-width:5px; border-style:solid; border-color:#777; background-color:#FFF; padding:10px;">' : '';
+    const FORMATTING_START = !plain ? '<div style="box-shadow:-3px 3px 4px #999; background-color:#CCC; border-style:solid; border-width:1px; padding:10px; background-image:linear-gradient(135deg, #FFFFCD, #CDFFFF);"><div style="border-width:5px; border-style:solid; border-color:#777; background-color:#FFF; padding:10px;">' : '';
     const FORMATTING_END = !plain ? '</div></div>' : '';
     if (target === 'chat') {
       sendChat('', `/desc ${FORMATTING_START}${content}${FORMATTING_END}`);
@@ -227,14 +220,16 @@ var Weather = Weather || (function () {
       }
       s.database.forecasts.push(forecast);
     } else {
-      throw new Error('Forecast is malformed.')
+      throw new Error('Forecast is malformed.');
     }
   };
 
-// Creates a new WeatherEffect object and pushes it to the proper state database
+/* Creates a new WeatherEffect object and pushes it to the proper state database
   const createNewEffect = function (type, name, temperature, windSpeed, humidity) {
     if (!type) return printTo('gm', 'No input found.');
-    if (_.find(state.Weather.database[type], obj => obj.name === name)) return printTo('gm', 'You must use a unique name.');
+    if (_.find(state.Weather.database[type], obj => obj.name === name)) {
+      return printTo('gm', 'You must use a unique name.');
+    }
     let inputArray;
     switch (type) {
       case 'biome': {
@@ -276,6 +271,7 @@ var Weather = Weather || (function () {
       }
     }
   };
+*/
 
 // Creates a new weather object and pushes it to the state database.
 // Also returns the object created.
@@ -314,7 +310,10 @@ var Weather = Weather || (function () {
   const modifyLatestForecast = function (args) {
     const s = state.Weather;
     const parsedArgs = _.chain(args)
-                        .map((item) => { const stat = item.split(':'); return { name: stat[0], value: stat[1] }; })
+                        .map((item) => {
+                          const stat = item.split(':');
+                          return { name: stat[0], value: stat[1] };
+                        })
                         .reject(stat => parseFloat(stat.value).toString() !== stat.value)
                         .filter(stat => _.contains(_.keys(getLastForecast().stats), stat.name))
                         .filter(stat => stat.name === 'temperature' || parseFloat(stat.value) >= 0)
@@ -322,13 +321,16 @@ var Weather = Weather || (function () {
                         .value();
     if (!parsedArgs.length) return printTo('gm', 'No valid input found.');
     if (!getLastForecast()) return printTo('gm', 'You haven\'t made any forecasts yet.');
-    const message = parsedArgs.reduce((m, stat) => { m += ` ${stat.name} to ${stat.value}`; return m; }, 'Changing the following values on the latest forecast:');
-    const newStats = parsedArgs.reduce((m, stat) => { m[stat.name] = parseFloat(stat.value); return m; }, {});
+    const message = _.reduce(parsedArgs, (m, stat) => {
+      m += ` ${stat.name} to ${stat.value}`;
+      return m;
+    }, 'Changing the following values on the latest forecast:');
+    const newStats = _.reduce(parsedArgs, (m, stat) => { m[stat.name] = parseFloat(stat.value); return m; }, {});
     s.database.forecasts[s.database.forecasts.length - 1].stats = Object.assign(getLastForecast().stats, newStats);
     printTo('gm', message);
   };
 
-// Removes the effect with the name given
+/* Removes the effect with the name given
   const removeEffect = function (type, ...input) {
     if (!type) return printTo('gm', 'No input found.');
     const name = input.join(' ');
@@ -339,6 +341,7 @@ var Weather = Weather || (function () {
       return printTo('gm', `There is no ${type} named ${name} to delete.`);
     }
   };
+*/
 
 /**************************************************************************************************/
 /********************************* MATH AND COMPARISON FUNCTIONS **********************************/
@@ -350,7 +353,10 @@ var Weather = Weather || (function () {
     const closestEffect = _.chain(state.Weather.database[type])
                            .map(effect => ({
                              name: effect.name,
-                             distance: _.keys(effect.stats).reduce((m, p) => { m += effect.stats[p] ? Math.abs(effect.stats[p] - obj[p]) : 0; return m; }, 0),
+                             distance: _.keys(effect.stats).reduce((m, p) => {
+                               m += (effect.stats[p]) ? (Math.abs(effect.stats[p] - obj[p])) : (0);
+                               return m;
+                             }, 0),
                            }))
                            .sortBy(effect => effect.distance)
                            .first()
@@ -377,7 +383,8 @@ var Weather = Weather || (function () {
 
 // Returns the amount of full in-game days elapsed between the two inputs
   const getDaysElapsed = function (originalTime, newTime) {
-    return Math.floor((newTime - originalTime - state.Weather.pause.delay) / TIME_PER_DAY);
+    return Math.floor((newTime - originalTime - state.Weather.pause.delay) /
+                      (86400 / state.Weather.timeScale * 1000));
   };
 
   const getRandomString = function (length) {
@@ -418,6 +425,7 @@ var Weather = Weather || (function () {
   };
 
   const normalizeForecastStats = function (stats) {
+    // Humidity scale ensures that precipitation * humidity * 2 until humidity is 50 or higher.
     const humidityScale = stats.humidity <= 0 ? 0 : stats.humidity > 50 ? 100 : stats.humidity * 2;
     return {
       temperature: Math.round(stats.temperature),
@@ -504,7 +512,9 @@ var Weather = Weather || (function () {
 // Checks to see if we need to update. If yes, return a new forecast. Otherwise return the latest.
   const getUpdatedForecast = function () {
     const daysSinceLast = getDaysElapsed(getLastForecast().time, Date.now());
-    if (!state.Weather.pause.active && state.Weather.autoAdvance && daysSinceLast > 0) return handleForecastCreation(daysSinceLast);
+    if (!state.Weather.pause.active && state.Weather.autoAdvance && daysSinceLast > 0) {
+      return handleForecastCreation(daysSinceLast);
+    }
     return getLastForecast();
   };
 
@@ -536,11 +546,13 @@ var Weather = Weather || (function () {
           else handleInstall(args[2]);
           break;
         }
+        /*
         case 'add': {
           if (!playerIsGM(msg.playerid)) return;
           else createNewEffect(...args.slice(2));
           break;
         }
+        */
         case 'advance': {
           if (!playerIsGM(msg.playerid)) return;
           if (s.install.needed) printTo(user, 'Please complete the installation.');
@@ -558,7 +570,11 @@ var Weather = Weather || (function () {
           } else {
             const secureString = getRandomString(32);
             s.install.code = secureString;
-            printTo(user, 'Are you sure you want to clear the forecast history?<hr>' + getButton('Yes', `!weather clear ${secureString}`) + getButton('No', '!weather decline'));
+            printTo(user,
+              'Are you sure you want to clear the forecast history?<hr>' +
+              getButton('Yes', `!weather clear ${secureString}`) +
+              getButton('No', '!weather decline')
+            );
           }
           break;
         }
@@ -605,7 +621,10 @@ var Weather = Weather || (function () {
               printTo(user, 'The forecast selected does not exist.');
             }
           } else {
-            const message = _.reduce(s.database.forecasts, (m, forecast) => { m += getButton(`Day ${forecast.day + s.daySeed}`, `!weather history ${forecast.day}`); return m; }, '<h1 style="color:#56ABE8">Past Forecasts</h1> Please select a previous forecast to see what happened on that day.<hr>');
+            const message = _.reduce(s.database.forecasts, (m, forecast) => {
+              m += getButton(`Day ${forecast.day + s.daySeed}`, `!weather history ${forecast.day}`);
+              return m;
+            }, '<h1 style="color:#56ABE8">Past Forecasts</h1> Please select a previous forecast to see what happened on that day.<hr>');
             printTo(user, message);
           }
           break;
@@ -621,7 +640,9 @@ var Weather = Weather || (function () {
               printTo(user, `The ${args[2]} biome doesn't exist.`);
             }
           } else {
-            const message = _.reduce(s.database.biome, (m, biome) => { m += getButton(biome.name, `!weather move ${biome.name}`); return m; }, '') || '<p style="font-size:60%">~ tumbleweed noises ~</p>';
+            const message = _.reduce(s.database.biome, (m, biome) => {
+              m += getButton(biome.name, `!weather move ${biome.name}`); return m;
+            }, '') || '<p style="font-size:60%">~ tumbleweed noises ~</p>';
             printTo(user, 'Please select the biome that your players are moving to.<hr>' + message);
           }
           break;
@@ -647,6 +668,7 @@ var Weather = Weather || (function () {
           printTo(user, 'Are you sure you want to reset all information? <br>' + getButton('Yes', `!weather ${secureString} reinstall`) + getButton('No', '!weather decline'));
           break;
         }
+        /*
         case 'remove':
         case 'delete':
         case 'destroy': {
@@ -655,6 +677,7 @@ var Weather = Weather || (function () {
           else removeEffect(...args.slice(2));
           break;
         }
+        */
         case 'resume':
         case 'start':
         case 'unpause': {
@@ -697,7 +720,10 @@ var Weather = Weather || (function () {
     if (input === 'reinstall') resetState();
     const s = state.Weather;
     const secureString = getRandomString(32);
-    const getQuestionOptions = (list, statement) => _.reduce(s.database[list], (m, item) => { m += getButton(`${item.name}`, `!weather ${secureString} ${item.name}`); return m; }, `${statement}<hr>`);
+    const getQuestionOptions = (list, statement) => _.reduce(s.database[list], (m, item) => {
+      m += getButton(`${item.name}`, `!weather ${secureString} ${item.name}`);
+      return m;
+    }, `${statement}<hr>`);
     let stage = s.install.stageList[s.install.stageIndex];
     const reply = {
       biome: getQuestionOptions('biome', 'Please select the biome that most closely resembles where your players are. This can be changed later.'),
